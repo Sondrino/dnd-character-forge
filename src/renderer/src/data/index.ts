@@ -8,7 +8,7 @@ import { createLookup, type Lookup } from '../engine/lookup'
  */
 const modules = {
   ...import.meta.glob('./*.ts', { eager: true }),
-  ...import.meta.glob('./classes/*.ts', { eager: true })
+  ...import.meta.glob('./*/*.ts', { eager: true })
 } as Record<string, Record<string, unknown>>
 
 const entities: AnyEntity[] = []
@@ -26,7 +26,7 @@ function collect(v: unknown): void {
 }
 
 for (const [path, mod] of Object.entries(modules)) {
-  if (path.endsWith('/index.ts') || path.endsWith('/skills.ts')) continue
+  if (path === './index.ts' || path === './skills.ts') continue
   for (const v of Object.values(mod)) collect(v)
 }
 

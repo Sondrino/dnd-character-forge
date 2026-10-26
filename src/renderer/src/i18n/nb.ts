@@ -12,7 +12,7 @@ export const nb = {
   },
   tabs: { adjust: 'Egne verdier', sheet: 'Ark', spells: 'Spells', inventory: 'Utstyr', features: 'Features & valg', details: 'Detaljer', custom: 'Egne ting' },
   char: { builderTip: 'Endre class, species, background, ability scores, utstyr og mer', adjust: 'Egne verdier', adjustTip: 'Juster eller overstyr alle verdier for custom game', levelDown: 'Gå ned et level', notFound: 'Fant ikke karakteren.', builder: 'Rediger', levelUp: 'Level up' },
-  info: {
+  info: { thirdPartyNote: 'Tredjepartsinnhold fra {{book}}, brukt under lisensen {{license}}. Det er ikke offisielt D&D-innhold – spør DM-en om det er tillatt i kampanjen. Se «Open Content Licenses» i Oppslag.', supplementNote: 'Offisiell tilleggsbok: {{book}}. Dette er bare et kort sammendrag med egne ord – full tekst finnes i boken eller på D&D Beyond.',
     more: 'Mer info', openDdb: 'Åpne på D&D Beyond', phbNote: 'Dette er et kort sammendrag med egne ord. Full regeltekst finner du i Player’s Handbook (2024) eller på D&D Beyond.',
     addInventory: 'Legg i utstyr', owned: 'Har {{n}}', addSpell: 'Legg til spell', known: 'Kjent', addFeat: 'Legg til feat', hasFeat: 'Har denne',
     addedItem: '{{name}} lagt i utstyret', addedSpell: '{{name}} lagt til', addedFeat: '{{name}} lagt til'
@@ -73,7 +73,7 @@ export const nb = {
     pickBackgroundFirst: 'Velg background først.', bgTotal: 'Brukt {{n}} av 3 poeng', addFeat: 'Legg til {{name}}', pickFeat: 'Velg feat',
     pickMastery: 'Velg våpen for Weapon Mastery'
   },
-  picker: { selected: 'Valgt {{n}} av {{max}}' },
+  picker: { showMore: 'Vis flere ({{n}} til) – eller søk for å snevre inn', selected: 'Valgt {{n}} av {{max}}' },
   tips: {
     title: 'Tips & å gjøre', warning: 'Advarsler', todo: 'Å gjøre', suggestion: 'Forslag', info: 'Info', fix: 'Fiks dette', none: 'Ingen tips – alt ser bra ut! ✦'
   },
@@ -119,7 +119,7 @@ export const nb = {
     inventoryNow: 'Utstyr nå', moreInSheet: 'Du kan legge til og endre mer utstyr i «Utstyr»-fanen på arket.', startingEquipment: 'startutstyr', undo: 'Angre',
     ready: 'Karakteren er klar!', readyText: 'Alle valg er tatt. Trykk «Fullfør» for å gå til arket.', remaining: '{{n}} valg gjenstår', skillsProf: 'Skill proficiencies'
   },
-  comp: { allSources: 'Alle kilder', count: '{{n}} treff', refine: '{{n}} flere – søk for å snevre inn' },
+  comp: { allBooks: 'Alle bøker', allSources: 'Alle kilder', count: '{{n}} treff', refine: '{{n}} flere – søk for å snevre inn' },
   hb: {
     new: 'Ny homebrew', edit: 'Rediger {{name}}', copyFrom: 'Kopier fra eksisterende', type: 'Type', summary: 'Kort beskrivelse',
     summaryHint: 'Vises i den lille popupen', editText: 'Rediger', preview: 'Forhåndsvis', effects: 'Effekter (oppdaterer arket automatisk)',
@@ -128,7 +128,7 @@ export const nb = {
     empty: 'Biblioteket er tomt', emptyText: 'Lag homebrew her, eller lagre fra en karakters «Egne ting»-fane.', effectCount: '{{n}} effekt(er)',
     imported: '{{n}} importert', importFail: 'Kunne ikke lese filen'
   },
-  settings: {
+  settings: { showSupplements: 'Vis innhold fra tilleggsbøker (Xanathar’s, Tasha’s …)', showThirdParty: 'Vis tredjepartsinnhold (Kobold Press, Level Up A5E …)', sourcesHint: 'Skjulte kilder forsvinner fra lister og velgere. Karakterer som allerede bruker dem, påvirkes ikke.',
     appearance: 'Utseende', language: 'Språk', theme: 'Tema', dark: 'Mørkt', light: 'Lyst', animations: 'Animasjoner', diceSound: 'Terninglyd',
     showTips: 'Vis tips-panel som standard', rules: 'Regler', hpMethod: 'HP ved level up', hpFixed: 'Fast verdi', hpRoll: 'Rull',
     ddb: 'Åpne D&D Beyond', ddbApp: 'I app-vindu', ddbBrowser: 'I nettleser', storage: 'Lagring', openFolder: 'Åpne mappe', about: 'Om',
@@ -136,6 +136,17 @@ export const nb = {
     trademark: 'Dungeons & Dragons og D&D Beyond er varemerker for Wizards of the Coast. Denne appen er ikke tilknyttet eller godkjent av Wizards of the Coast.'
   },
   choices: { title: 'Valg', pending: '{{n}} valg mangler', spellsPending: 'Spells mangler – gå til Spells-fanen', done: 'Valg du har tatt ({{n}}) – klikk for å endre', none: 'Ingen valg for denne karakteren.' },
+  faith: {
+    god: 'Gud', patron: 'Patron', godOrPatron: 'Gud / patron', pickGod: 'Velg gud', pickPatron: 'Velg patron', gods: 'Guder', patrons: 'Warlock-patrons',
+    search: 'Søk etter navn, domain, pantheon …', recommended: 'Anbefalt for din subclass', recommendedFor: 'Passer godt for classen/subclassen din:',
+    domains: 'Domains', symbol: 'Symbol',
+    note: 'Forgotten Realms-innhold: navn og fakta med korte beskrivelser skrevet for appen. Les mer på D&D Beyond eller i Forgotten Realms-bøkene.',
+    why: {
+      god: 'Clerics og paladins henter ofte kraften sin fra en gud. Guden former idealer, oppførsel og hva karakteren kjemper for – og domain/oath bør passe til guden.',
+      patron: 'En warlock har inngått en pakt med en mektig skapning. Hvem patronen er (en archdevil, archfey, Great Old One eller celestial) gir sterke rollespill-kroker.',
+      both: 'Karakteren har både guddommelig kraft og en pakt – velg guden eller patronen som betyr mest for historien.'
+    }
+  },
   guide: {
     title: 'Hva mangler? – steg for steg', missingBtn: 'ting mangler – vis meg', badgeTitle: 'Klikk for å se hva som mangler og fikse det',
     step: 'Steg {{n}} av {{total}}', remaining: '{{n}} gjenstår', from: 'Kommer fra', stepDone: 'Fikset! Går videre …', skip: 'Hopp over',

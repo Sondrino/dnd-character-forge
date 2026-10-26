@@ -126,6 +126,11 @@ export default function CharacterPage() {
                 </>
               )}
               {char.alignment && <>· {char.alignment}</>}
+              {char.deityId && lookup.get('deity', char.deityId) && (
+                <>
+                  · ☀ <EntityLink kind="deity" id={char.deityId} />
+                </>
+              )}
             </div>
           </div>
           <div className="ml-auto flex flex-wrap gap-2">

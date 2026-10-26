@@ -21,6 +21,7 @@ import { rollAbilityScore } from '../dice'
 import { uid } from '../store/characters'
 import { DieShape } from '../components/Dice'
 import { syncGrantedSpells } from '../lib/sync'
+import { FaithPanel, FAITH_CLASSES } from '../components/Faith'
 import type { Lookup } from '../engine/lookup'
 
 type StepId = 'class' | 'origin' | 'abilities' | 'equipment' | 'spells' | 'details' | 'review'
@@ -302,6 +303,7 @@ function ClassStep() {
           </div>
           <div className="col-span-12 space-y-3 lg:col-span-5">
             {skillChoice && <ChoiceResolver p={skillChoice} />}
+            {char.classes.some((c) => FAITH_CLASSES.includes(c.classId)) && <FaithPanel char={char} L={L} update={update} />}
             {pending.length === 0 && (
               <div className="panel p-4 text-sm text-good">
                 <Check size={14} className="mr-1 inline" /> {t('builder.allChosen')}

@@ -1,6 +1,6 @@
 import type {
   AnyEntity, ArmorDef, BackgroundDef, ClassDef, ClassOptionGroup, ConditionDef, EntityKind, FeatDef, GearDef,
-  LanguageDef, MagicItemDef, CreatureDef, RuleDef, SpeciesDef, SpellDef, SubclassDef, ToolDef, WeaponDef
+  LanguageDef, MagicItemDef, CreatureDef, DeityDef, RuleDef, SpeciesDef, SpellDef, SubclassDef, ToolDef, WeaponDef
 } from '../types'
 
 export interface KindMap {
@@ -19,6 +19,7 @@ export interface KindMap {
   rule: RuleDef
   language: LanguageDef
   creature: CreatureDef
+  deity: DeityDef
   feature: Extract<AnyEntity, { kind: 'feature' }>
 }
 

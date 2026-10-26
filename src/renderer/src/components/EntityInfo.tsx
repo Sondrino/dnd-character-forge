@@ -19,7 +19,7 @@ import type { Lookup } from '../engine/lookup'
 export const KIND_LABEL: Record<string, string> = {
   class: 'Class', subclass: 'Subclass', species: 'Species', background: 'Background', feat: 'Feat', spell: 'Spell',
   weapon: 'Weapon', armor: 'Armor', gear: 'Gear', tool: 'Tool', magicItem: 'Magic Item', condition: 'Condition',
-  rule: 'Rule', language: 'Language', feature: 'Feature', creature: 'Creature'
+  rule: 'Rule', language: 'Language', feature: 'Feature', creature: 'Creature', deity: 'Deity'
 }
 
 export function openDndBeyond(e: { name: string; kind?: string; dndBeyondUrl?: string }): void {
@@ -127,6 +127,17 @@ export function entityFacts(e: AnyEntity, L: Lookup): { label: string; value: Re
         { label: 'Category', value: { origin: 'Origin', general: 'General', fightingStyle: 'Fighting Style', epicBoon: 'Epic Boon' }[f.category] },
         ...(f.prerequisite ? [{ label: 'Prerequisite', value: f.prerequisite }] : []),
         ...(f.repeatable ? [{ label: 'Repeatable', value: 'Yes' }] : [])
+      ]
+    }
+    case 'deity': {
+      const g = e as unknown as { title: string; alignment: string; domains: string[]; symbol: string; pantheon: string; portfolio: string; category: string; suggested: string[] }
+      return [
+        { label: 'Title', value: g.title },
+        { label: 'Alignment', value: g.alignment },
+        { label: g.category === 'patron' ? 'Patron' : 'Domains', value: g.category === 'patron' ? g.portfolio : g.domains.join(', ') },
+        ...(g.symbol !== '—' ? [{ label: 'Symbol', value: g.symbol }] : []),
+        { label: 'Pantheon', value: g.pantheon },
+        { label: 'Fits', value: g.suggested.map((s) => L.get('subclass', s)?.name ?? s).join(', ') || '—' }
       ]
     }
     case 'creature': {
@@ -265,7 +276,7 @@ export function InfoPopover({
                 </button>
               )}
               <span className="ml-auto">
-                <SourceBadge source={entity.source} />
+                <SourceBadge source={entity.source} book={entity.sourceBook} />
               </span>
             </div>
           </div>
@@ -328,7 +339,7 @@ export function DetailDrawer() {
                   </button>
                 )}
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-muted">{KIND_LABEL[e.kind] ?? e.kind}</span>
-                <SourceBadge source={e.source} />
+                <SourceBadge source={e.source} book={e.sourceBook} />
                 <div className="ml-auto flex gap-2">
                   {e.kind !== 'feature' && (
                     <button className="btn btn-sm" onClick={() => openDndBeyond(e)}>
@@ -348,6 +359,12 @@ export function DetailDrawer() {
             <div className="flex-1 overflow-y-auto px-6 py-5">
               <AddToCharacter entity={e} />
               <EntityBody entity={e} />
+              {(e.source === 'Third-party' || e.source === 'Supplement') && (
+                <div className={`mt-6 rounded-xl border p-3 text-sm text-muted ${e.source === 'Third-party' ? 'border-good/30 bg-good/5' : 'border-crimson/30 bg-crimson/5'}`}>
+                  <BookOpen size={14} className="mr-1 inline" />
+                  {e.source === 'Third-party' ? t('info.thirdPartyNote', { book: e.sourceBook ?? '', license: e.license ?? '' }) : t('info.supplementNote', { book: e.sourceBook ?? '' })}
+                </div>
+              )}
               {e.source === 'PHB 2024' && (
                 <div className="mt-6 rounded-xl border border-sky/30 bg-sky/5 p-3 text-sm text-muted">
                   <BookOpen size={14} className="mr-1 inline" /> {t('info.phbNote')}

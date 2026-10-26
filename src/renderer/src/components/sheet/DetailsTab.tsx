@@ -8,12 +8,13 @@ import { ALIGNMENTS, XP_TABLE } from '../../data/skills'
 import { api } from '../../lib/api'
 import type { Character } from '../../types'
 import { ClassEmblem } from '../ClassEmblem'
+import { FaithPanel } from '../Faith'
 
 type DetailKey = keyof Character['details']
 
 export function DetailsTab() {
   const { t } = useTranslation()
-  const { char, derived: d, update } = useChar()
+  const { char, derived: d, lookup, update } = useChar()
   const field = (k: DetailKey, rows = 0): React.ReactElement => (
     <div key={k}>
       <label className="label">{t(`details.${k}`)}</label>
@@ -51,6 +52,7 @@ export function DetailsTab() {
             )}
           </div>
         </Section>
+        <FaithPanel char={char} L={lookup} update={update} />
         <Section title={t('details.basics')}>
           <div className="space-y-3">
             <div>

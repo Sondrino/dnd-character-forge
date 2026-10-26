@@ -11,6 +11,10 @@ export interface Settings {
   dndBeyondMode: 'app' | 'browser'
   hpMethod: 'fixed' | 'roll'
   showTips: boolean
+  /** Vis tredjepartsinnhold (Kobold Press, Level Up A5E …) i lister og velgere */
+  showThirdParty: boolean
+  /** Vis sammendrag fra offisielle tilleggsbøker (Xanathar's, Tasha's …) */
+  showSupplements: boolean
 }
 
 const DEFAULTS: Settings = {
@@ -20,7 +24,9 @@ const DEFAULTS: Settings = {
   diceSound: true,
   dndBeyondMode: 'app',
   hpMethod: 'fixed',
-  showTips: true
+  showTips: true,
+  showThirdParty: true,
+  showSupplements: true
 }
 
 interface SettingsState extends Settings {

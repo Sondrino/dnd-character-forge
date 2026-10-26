@@ -168,14 +168,39 @@ export function Tabs<T extends string>({
   )
 }
 
-export function SourceBadge({ source }: { source: Source | string }) {
+/** Vanlige forkortelser for offisielle tilleggsbøker */
+const BOOK_ABBR: Record<string, string> = {
+  "Xanathar's Guide to Everything": 'XGE',
+  'Xanathar’s Guide to Everything': 'XGE',
+  "Tasha's Cauldron of Everything": 'TCE',
+  'Tasha’s Cauldron of Everything': 'TCE',
+  "Sword Coast Adventurer's Guide": 'SCAG',
+  'Sword Coast Adventurer’s Guide': 'SCAG',
+  "Fizban's Treasury of Dragons": 'Fizban’s',
+  'Fizban’s Treasury of Dragons': 'Fizban’s',
+  'Strixhaven: A Curriculum of Chaos': 'Strixhaven',
+  "Explorer's Guide to Wildemount": 'Wildemount',
+  'Explorer’s Guide to Wildemount': 'Wildemount',
+  'Acquisitions Incorporated': 'Acq. Inc.',
+  'Spelljammer: Adventures in Space': 'Spelljammer'
+}
+
+export function SourceBadge({ source, book }: { source: Source | string; book?: string }) {
   const cls =
     source === 'SRD 5.2'
       ? 'border-gold/40 text-gold'
       : source === 'Homebrew'
         ? 'border-arcane/50 text-arcane'
-        : 'border-sky/40 text-sky'
-  return <span className={`chip ${cls}`}>{source}</span>
+        : source === 'Third-party'
+          ? 'border-good/40 text-good'
+          : source === 'Supplement'
+            ? 'border-crimson/40 text-crimson-2'
+            : 'border-sky/40 text-sky'
+  return (
+    <span className={`chip ${cls}`} title={book}>
+      {source === 'Third-party' && book ? book.split(' (')[0] : source === 'Supplement' && book ? BOOK_ABBR[book] ?? book.slice(0, 22) : source}
+    </span>
+  )
 }
 
 export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: ReactNode }) {

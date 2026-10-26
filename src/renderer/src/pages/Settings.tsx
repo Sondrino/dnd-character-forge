@@ -60,6 +60,13 @@ export default function SettingsPage() {
               </button>
             </div>
           </Row>
+          <Row label={t('settings.showSupplements')}>
+            <Toggle checked={s.showSupplements} onChange={(v) => s.set({ showSupplements: v })} />
+          </Row>
+          <Row label={t('settings.showThirdParty')}>
+            <Toggle checked={s.showThirdParty} onChange={(v) => s.set({ showThirdParty: v })} />
+          </Row>
+          <p className="-mt-2 text-xs text-muted">{t('settings.sourcesHint')}</p>
           <Row label={t('settings.ddb')}>
             <div className="flex gap-1">
               <button className={`btn btn-sm ${s.dndBeyondMode === 'app' ? 'btn-primary' : ''}`} onClick={() => s.set({ dndBeyondMode: 'app' })}>

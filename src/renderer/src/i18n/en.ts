@@ -14,7 +14,7 @@ export const en: typeof nb = {
   },
   tabs: { adjust: 'Custom values', sheet: 'Sheet', spells: 'Spells', inventory: 'Inventory', features: 'Features & choices', details: 'Details', custom: 'Custom' },
   char: { builderTip: 'Change class, species, background, ability scores, equipment and more', adjust: 'Custom values', adjustTip: 'Adjust or override any value for a custom game', levelDown: 'Level down', notFound: 'Character not found.', builder: 'Edit', levelUp: 'Level up' },
-  info: {
+  info: { thirdPartyNote: 'Third-party content from {{book}}, used under the {{license}} license. It is not official D&D content – ask your DM whether it is allowed. See “Open Content Licenses” in the Compendium.', supplementNote: 'Official supplement: {{book}}. This is only a short summary in our own words – the full text is in the book or on D&D Beyond.',
     more: 'More info', openDdb: 'Open on D&D Beyond', phbNote: 'This is a short summary in our own words. Read the full rules text in the 2024 Player’s Handbook or on D&D Beyond.',
     addInventory: 'Add to inventory', owned: 'Own {{n}}', addSpell: 'Add spell', known: 'Known', addFeat: 'Add feat', hasFeat: 'Already have',
     addedItem: '{{name}} added to inventory', addedSpell: '{{name}} added', addedFeat: '{{name}} added'
@@ -73,7 +73,7 @@ export const en: typeof nb = {
     pickBackgroundFirst: 'Choose a background first.', bgTotal: 'Used {{n}} of 3 points', addFeat: 'Add {{name}}', pickFeat: 'Choose feat',
     pickMastery: 'Choose Weapon Mastery weapons'
   },
-  picker: { selected: 'Selected {{n}} of {{max}}' },
+  picker: { showMore: 'Show more ({{n}} left) – or search to narrow down', selected: 'Selected {{n}} of {{max}}' },
   tips: { title: 'Tips & to-do', warning: 'Warnings', todo: 'To do', suggestion: 'Suggestions', info: 'Info', fix: 'Fix this', none: 'No tips – everything looks good! ✦' },
   level: { downTitle: 'Level down', downDone: 'Level removed', downConfirm: 'Remove level', downMin: 'The character is already level 1.', downIntro: 'Choose which class loses a level. Choices tied to that level are removed.', downFeatures: 'Features removed', downFeats: 'Feats removed', downSubclass: 'Subclass removed: {{name}}', downClass: 'The class is removed entirely (multiclass)', downNote: 'Spells and equipment are kept – check the Spells tab afterwards.', undo: 'Undo level up',
     title: 'Level up', chooseClass: 'Choose which class gains level {{n}}:', max: 'Max level (20) reached.', current: 'Currently level {{n}}',
@@ -117,7 +117,7 @@ export const en: typeof nb = {
     inventoryNow: 'Current equipment', moreInSheet: 'Add and change more equipment on the sheet’s Inventory tab.', startingEquipment: 'starting equipment', undo: 'Undo',
     ready: 'Your character is ready!', readyText: 'All choices are made. Press Finish to go to the sheet.', remaining: '{{n}} choices remaining', skillsProf: 'Skill proficiencies'
   },
-  comp: { allSources: 'All sources', count: '{{n}} results', refine: '{{n}} more – search to narrow down' },
+  comp: { allBooks: 'All books', allSources: 'All sources', count: '{{n}} results', refine: '{{n}} more – search to narrow down' },
   hb: {
     new: 'New homebrew', edit: 'Edit {{name}}', copyFrom: 'Copy from existing', type: 'Type', summary: 'Short description',
     summaryHint: 'Shown in the small popup', editText: 'Edit', preview: 'Preview', effects: 'Effects (update the sheet automatically)',
@@ -126,7 +126,7 @@ export const en: typeof nb = {
     empty: 'The library is empty', emptyText: 'Create homebrew here, or save from a character’s Custom tab.', effectCount: '{{n}} effect(s)',
     imported: '{{n}} imported', importFail: 'Could not read the file'
   },
-  settings: {
+  settings: { showSupplements: 'Show supplement content (Xanathar’s, Tasha’s …)', showThirdParty: 'Show third-party content (Kobold Press, Level Up A5E …)', sourcesHint: 'Hidden sources disappear from lists and pickers. Characters already using them are not affected.',
     appearance: 'Appearance', language: 'Language', theme: 'Theme', dark: 'Dark', light: 'Light', animations: 'Animations', diceSound: 'Dice sound',
     showTips: 'Show tips panel by default', rules: 'Rules', hpMethod: 'HP on level up', hpFixed: 'Fixed value', hpRoll: 'Roll',
     ddb: 'Open D&D Beyond', ddbApp: 'In app window', ddbBrowser: 'In browser', storage: 'Storage', openFolder: 'Open folder', about: 'About',
@@ -134,6 +134,17 @@ export const en: typeof nb = {
     trademark: 'Dungeons & Dragons and D&D Beyond are trademarks of Wizards of the Coast. This app is not affiliated with or endorsed by Wizards of the Coast.'
   },
   choices: { title: 'Choices', pending: '{{n}} choices missing', spellsPending: 'Spells missing – go to the Spells tab', done: 'Choices made ({{n}}) – click to change', none: 'No choices for this character.' },
+  faith: {
+    god: 'Deity', patron: 'Patron', godOrPatron: 'Deity / patron', pickGod: 'Choose deity', pickPatron: 'Choose patron', gods: 'Deities', patrons: 'Warlock patrons',
+    search: 'Search name, domain, pantheon…', recommended: 'Recommended for your subclass', recommendedFor: 'Good fits for your class/subclass:',
+    domains: 'Domains', symbol: 'Symbol',
+    note: 'Forgotten Realms content: names and facts with short descriptions written for this app. Read more on D&D Beyond or in the Forgotten Realms books.',
+    why: {
+      god: 'Clerics and paladins often draw their power from a deity. The deity shapes ideals, behavior and what the character fights for – and the domain/oath should fit the deity.',
+      patron: 'A warlock has made a pact with a powerful being. Who the patron is (an archdevil, archfey, Great Old One or celestial) gives strong roleplay hooks.',
+      both: 'Your character has both divine power and a pact – choose the deity or patron that matters most to the story.'
+    }
+  },
   guide: {
     title: 'What is missing? – step by step', missingBtn: 'things missing – show me', badgeTitle: 'Click to see what is missing and fix it',
     step: 'Step {{n}} of {{total}}', remaining: '{{n}} remaining', from: 'Comes from', stepDone: 'Fixed! Moving on…', skip: 'Skip',

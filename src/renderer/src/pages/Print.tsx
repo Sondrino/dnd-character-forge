@@ -431,6 +431,20 @@ export default function PrintPage() {
               ))}
             </div>
           </div>
+          {char.deityId && L.get('deity', char.deityId) && (() => {
+            const g = L.get('deity', char.deityId)!
+            return (
+              <div className="box entry" style={{ marginTop: '3mm' }}>
+                <h3>{g.category === 'patron' ? 'Patron' : 'Deity'}</h3>
+                <div>
+                  <b>{g.name}</b>, {g.title} · {g.alignment}
+                  {g.domains.length > 0 && <> · Domains: {g.domains.join(', ')}</>}
+                  {g.symbol !== '—' && <> · Symbol: {g.symbol}</>}
+                </div>
+                <div style={{ marginTop: '1mm', fontFamily: 'EB Garamond, serif', fontSize: '10pt' }}>{g.summary}</div>
+              </div>
+            )
+          })()}
           {(
             [
               ['Appearance', char.details.appearance],

@@ -23,7 +23,8 @@ const KINDS: { kind: EntityKind; label: string }[] = [
   { kind: 'condition', label: 'Conditions' },
   { kind: 'rule', label: 'Rules Glossary' },
   { kind: 'language', label: 'Languages' },
-  { kind: 'creature', label: 'Creatures' }
+  { kind: 'creature', label: 'Creatures' },
+  { kind: 'deity', label: 'Gods & Patrons' }
 ]
 
 export default function Compendium() {
@@ -41,9 +42,10 @@ export default function Compendium() {
 
   const all = useMemo(() => L.all(kind).sort((a, b) => ((a as SpellDef).level ?? 0) - ((b as SpellDef).level ?? 0) || a.name.localeCompare(b.name)), [L, kind])
   const filters = filterDefs(kind, all, L)
+  const books = [...new Set(all.map((e) => e.sourceBook).filter((b): b is string => !!b))].sort()
   const shown = all.filter((e) => {
     if (q && !`${e.name} ${e.summary} ${(e.tags ?? []).join(' ')}`.toLowerCase().includes(q.toLowerCase())) return false
-    if (source !== 'all' && e.source !== source) return false
+    if (source !== 'all' && e.source !== source && e.sourceBook !== source) return false
     if (filters[0] && f1 !== 'all' && !filters[0].test(e, f1)) return false
     if (filters[1] && f2 !== 'all' && !filters[1].test(e, f2)) return false
     return true
@@ -79,8 +81,21 @@ export default function Compendium() {
             <option value="all">{t('comp.allSources')}</option>
             <option value="SRD 5.2">SRD 5.2</option>
             <option value="PHB 2024">PHB 2024</option>
+            <option value="Supplement">Supplement (Xanathar's, Tasha's …)</option>
+            <option value="Third-party">Third-party (Kobold Press, A5E …)</option>
+            <option value="Forgotten Realms">Forgotten Realms</option>
             <option value="Homebrew">Homebrew</option>
           </select>
+          {books.length > 0 && (
+            <select className="input w-56" value={books.includes(source) ? source : ''} onChange={(e) => setSource(e.target.value || 'all')}>
+              <option value="">{t('comp.allBooks')}</option>
+              {books.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          )}
           {filters[0] && (
             <select className="input w-44" value={f1} onChange={(e) => setF1(e.target.value)}>
               <option value="all">{filters[0].label}: {t('common.all')}</option>
@@ -135,7 +150,7 @@ export default function Compendium() {
                   ))}
                   <p className="mt-1 line-clamp-2 text-xs text-ink/80">{e.summary}</p>
                   <div className="mt-2">
-                    <SourceBadge source={e.source} />
+                    <SourceBadge source={e.source} book={e.sourceBook} />
                   </div>
                 </motion.div>
               )
@@ -179,6 +194,11 @@ function filterDefs(kind: EntityKind, all: AnyEntity[], L: ReturnType<typeof use
       return [{ label: 'Class', options: L.all('class').map((c) => ({ v: c.id, l: c.name })), test: (e, v) => (e as { classId: string }).classId === v }]
     case 'rule':
       return [{ label: 'Category', options: uniq(all.map((e) => (e as { category: string }).category)).map((c) => ({ v: c, l: c })), test: (e, v) => (e as { category: string }).category === v }]
+    case 'deity':
+      return [
+        { label: 'Pantheon', options: uniq(all.map((e) => (e as { pantheon: string }).pantheon)).map((x) => ({ v: x, l: x })), test: (e, v) => (e as { pantheon: string }).pantheon === v },
+        { label: 'Domain / patron', options: uniq(all.flatMap((e) => [...(e as { domains: string[] }).domains, (e as { portfolio: string }).portfolio.endsWith('patron') ? (e as { portfolio: string }).portfolio : ''])).filter(Boolean).map((x) => ({ v: x, l: x })), test: (e, v) => (e as { domains: string[] }).domains.includes(v) || (e as { portfolio: string }).portfolio === v }
+      ]
     case 'creature':
       return [
         { label: 'Type', options: uniq(all.map((e) => (e as { creatureType: string }).creatureType)).map((x) => ({ v: x, l: x })), test: (e, v) => (e as { creatureType: string }).creatureType === v },

@@ -19,11 +19,19 @@ export type School =
 /** 'SRD 5.2' = full offisiell tekst under CC-BY-4.0.
  *  'PHB 2024' = kun navn/mekanikk + kort sammendrag med egne ord (full tekst på D&D Beyond).
  *  'Homebrew' = laget av brukeren. */
-export type Source = 'SRD 5.2' | 'PHB 2024' | 'Homebrew'
+/**
+ * 'SRD 5.2'          = full offisiell tekst under CC-BY-4.0.
+ * 'PHB 2024'         = kun mekanikk + kort sammendrag med egne ord.
+ * 'Supplement'       = offisielle tilleggsbøker (Xanathar's, Tasha's …): kun mekanikk + kort sammendrag med egne ord.
+ * 'Third-party'      = tredjepart med åpen lisens (OGL 1.0a / CC-BY / ORC) – full tekst, se `sourceBook` og `license`.
+ * 'Forgotten Realms' = setting-fakta + egne beskrivelser.
+ * 'Homebrew'         = laget av brukeren.
+ */
+export type Source = 'SRD 5.2' | 'PHB 2024' | 'Supplement' | 'Third-party' | 'Forgotten Realms' | 'Homebrew'
 
 export type EntityKind =
   | 'class' | 'subclass' | 'species' | 'background' | 'feat' | 'spell' | 'weapon'
-  | 'armor' | 'gear' | 'tool' | 'magicItem' | 'condition' | 'rule' | 'language' | 'feature' | 'creature'
+  | 'armor' | 'gear' | 'tool' | 'magicItem' | 'condition' | 'rule' | 'language' | 'feature' | 'creature' | 'deity'
 
 /**
  * Effect: en mekanisk modifikator som gjør at sheetet oppdaterer seg automatisk.
@@ -96,6 +104,10 @@ export interface BaseEntity {
   /** Direkte lenke om kjent, ellers lages søke-URL automatisk */
   dndBeyondUrl?: string
   effects?: Effect[]
+  /** Boktittel for 'Supplement'/'Third-party', f.eks. "Deep Magic 5e (Kobold Press)" eller "Xanathar's Guide to Everything" */
+  sourceBook?: string
+  /** Lisens for tredjepartsinnhold: 'OGL 1.0a' | 'CC-BY-4.0' | 'ORC' */
+  license?: string
 }
 
 export interface Feature {
@@ -340,6 +352,25 @@ export interface CreatureDef extends BaseEntity {
   /** description = hele stat blocken som markdown */
 }
 
+/**
+ * Gud eller warlock-patron (Forgotten Realms). Kun fakta (navn, tittel, alignment, domains, symbol)
+ * og korte beskrivelser med egne ord – ikke SRD-innhold.
+ */
+export interface DeityDef extends BaseEntity {
+  kind: 'deity'
+  category: 'god' | 'patron'
+  /** 'Faerûnian', 'Dwarven', 'Elven', 'Drow', 'Gnomish', 'Halfling', 'Orc', 'Draconic', 'Archdevil', 'Demon Lord', 'Archfey', 'Great Old One', 'Celestial' */
+  pantheon: string
+  title: string
+  alignment: string
+  /** Tradisjonelle domains (også de som ikke finnes i 2024 PHB, f.eks. Nature, Tempest, Death) */
+  domains: string[]
+  symbol: string
+  portfolio: string
+  /** Subclass-ids dette passer godt med: cleric domains, paladin oaths, warlock patrons */
+  suggested: string[]
+}
+
 export interface LanguageDef extends BaseEntity {
   kind: 'language'
   rarity: 'standard' | 'rare'
@@ -348,7 +379,7 @@ export interface LanguageDef extends BaseEntity {
 
 export type AnyEntity =
   | ClassDef | SubclassDef | SpeciesDef | BackgroundDef | FeatDef | SpellDef | WeaponDef
-  | ArmorDef | GearDef | ToolDef | MagicItemDef | ConditionDef | RuleDef | LanguageDef | CreatureDef
+  | ArmorDef | GearDef | ToolDef | MagicItemDef | ConditionDef | RuleDef | LanguageDef | CreatureDef | DeityDef
   | (BaseEntity & { kind: 'feature'; level?: number; uses?: Uses; activation?: Feature['activation'] })
 
 /* ------------------------------------------------------------------ */
@@ -420,6 +451,8 @@ export interface Character {
   classes: ClassEntry[]
   speciesId: string
   speciesOptionId?: string
+  /** Gud (cleric/paladin) eller patron (warlock) – id i deities-dataene */
+  deityId?: string
   /** Størrelse når species tillater valg (Human/Tiefling: Small eller Medium) */
   size?: string
   backgroundId: string

@@ -30,6 +30,8 @@ export function EntityPicker({
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<string[]>(selected)
   const [level, setLevel] = useState<number | null>(null)
+  const [limit, setLimit] = useState(150)
+  useEffect(() => setLimit(150), [q, level, open])
   useEffect(() => {
     if (open) {
       setPicked(selected)
@@ -111,6 +113,7 @@ export function EntityPicker({
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
             {shown
               .filter((e) => !groupBy || groupBy(e) === g)
+              .slice(0, limit)
               .map((e, i) => {
                 const on = picked.includes(e.id)
                 const facts = entityFacts(e, L).slice(0, 2)
@@ -145,7 +148,7 @@ export function EntityPicker({
                     </div>
                     <p className="mt-1 line-clamp-3 text-xs text-ink/80">{e.summary}</p>
                     <div className="mt-2 flex items-center justify-between">
-                      <SourceBadge source={e.source} />
+                      <SourceBadge source={e.source} book={e.sourceBook} />
                       {on && (
                         <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[#1d1408]">
                           <Check size={12} />
@@ -159,6 +162,13 @@ export function EntityPicker({
         </div>
       ))}
       {!shown.length && <div className="py-10 text-center text-muted">{t('common.noResults')}</div>}
+      {groups.some((g) => shown.filter((e) => !groupBy || groupBy(e) === g).length > limit) && (
+        <div className="py-3 text-center">
+          <button className="btn" onClick={() => setLimit(limit + 300)}>
+            {t('picker.showMore', { n: shown.length - limit })}
+          </button>
+        </div>
+      )}
     </Modal>
   )
 }

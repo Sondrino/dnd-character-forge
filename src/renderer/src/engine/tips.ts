@@ -112,6 +112,26 @@ export function computeTips(char: Character, d: Derived, L0: Lookup, lang: 'nb' 
     if (firstClass.quickBuild) tips.push({ id: 'quickbuild', level: 'info', title: t('Quick build', 'Quick build'), text: firstClass.quickBuild })
   }
 
+  // Gud / patron for cleric, paladin og warlock
+  {
+    const ids = char.classes.map((c) => c.classId)
+    const needsGod = ids.includes('cleric') || ids.includes('paladin')
+    const needsPatron = ids.includes('warlock')
+    if ((needsGod || needsPatron) && !L.get('deity', char.deityId)) {
+      const subs = char.classes.map((c) => c.subclassId).filter(Boolean) as string[]
+      const all = L.all('deity')
+      const rec = all.filter((d) => d.suggested.some((s) => subs.includes(s))).slice(0, 5)
+      tips.push({
+        id: 'faith', level: 'suggestion', area: 'details',
+        title: needsPatron && !needsGod ? t('Velg en patron', 'Choose a patron') : t('Velg en gud', 'Choose a deity'),
+        text: needsPatron && !needsGod
+          ? t('Warlocks får kraften sin fra en patron. Å vite hvem (f.eks. en archdevil eller archfey) gir god rollespill.', 'Warlocks draw power from a patron – knowing who gives great roleplay hooks.')
+          : t('Clerics og paladins tjener ofte en gud. Guden påvirker personlighet, idealer og hva karakteren kjemper for.', 'Clerics and paladins often serve a deity, shaping personality and ideals.'),
+        links: (rec.length ? rec : all.filter((d) => ['tymora', 'lathander', 'tyr', 'torm'].includes(d.id))).map((d) => ({ kind: 'deity', id: d.id, name: d.name }))
+      })
+    }
+  }
+
   // Utstyrssjekker
   const has = (id: string): boolean => char.inventory.some((i) => i.refId === id)
   if (firstClass?.spellcasting && !char.inventory.some((i) => /focus|holy-symbol|component-pouch|spellbook|crystal|orb|rod|staff|wand|instrument|lute|flute|lyre|drum|horn|viol/.test(i.refId ?? '')))

@@ -13,7 +13,9 @@ Windows-app for å lage, utvikle og spille D&D-karakterer etter **2024-reglene (
 - **Terninger:** klikk på en verdi for å rulle. Støtter advantage/disadvantage, kritiske treff og egen notasjon (`2d6+3`, `4d6kh3`).
 - **Regeldata:**
   - 12 classes og 49 subclasses, 10 species, 16 backgrounds og 77 feats.
-  - 394 spells, 383 magic items og 336 creatures.
+  - 1321 spells, 1565 magic items og 336 creatures.
+  - Guder og warlock-patrons fra Forgotten Realms.
+  - Tilleggsbøker (Xanathar's, Tasha's m.fl.) som korte sammendrag, og tredjepartsinnhold med åpen lisens (Kobold Press, Level Up A5E). Begge kan skjules i Innstillinger.
   - Våpen, rustning, utstyr og regelordliste.
 - **Info i to nivåer:** klikk et navn for en kort popup. «Mer info» gir full beskrivelse, med lenke til D&D Beyond.
 - **Mer:**
@@ -48,5 +50,9 @@ npm run web      # kun grensesnittet i nettleser (lagrer i localStorage)
 This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
 
 Oppføringer merket «PHB 2024» inneholder bare spillmekanikk og korte sammendrag skrevet for denne appen. Full tekst står i Player’s Handbook eller på D&D Beyond.
+
+Oppføringer merket «Supplement» (Xanathar's, Tasha's …) og «Forgotten Realms» er også bare fakta og korte sammendrag med egne ord.
+
+Tredjepartsinnhold (spells og magic items fra Kobold Press og EN Publishing, via [Open5e](https://open5e.com)) brukes under Open Game License 1.0a og CC-BY-4.0. Se [LICENSES-CONTENT.md](LICENSES-CONTENT.md) for full lisenstekst og attribusjon.
 
 *Dungeons & Dragons og D&D Beyond er varemerker for Wizards of the Coast. Prosjektet er ikke tilknyttet eller godkjent av Wizards of the Coast. Compatible with fifth edition.*

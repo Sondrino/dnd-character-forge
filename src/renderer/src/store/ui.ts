@@ -5,7 +5,7 @@ import { baseLookup } from '../data'
 import type { Lookup } from '../engine/lookup'
 import { computeCharacter, type Derived } from '../engine/compute'
 import { useCharacters } from './characters'
-import { useHomebrew } from './settings'
+import { useHomebrew, useSettings } from './settings'
 
 export interface DetailRef {
   kind: EntityKind | 'item'
@@ -59,7 +59,16 @@ export const useUi = create<UiState>((set, get) => ({
 /** Lookup med globalt homebrew-bibliotek lagt over grunndataene */
 export function useLookup(): Lookup {
   const hb = useHomebrew((s) => s.entities)
-  return useMemo(() => baseLookup.extend(hb), [hb])
+  const third = useSettings((s) => s.showThirdParty)
+  const supp = useSettings((s) => s.showSupplements)
+  return useMemo(() => {
+    const full = baseLookup.extend(hb)
+    if (third && supp) return full
+    // Skjulte kilder fjernes bare fra lister/velgere (all); oppslag av allerede valgte ting virker fortsatt
+    const visible = (e: AnyEntity): boolean => (third || e.source !== 'Third-party') && (supp || e.source !== 'Supplement')
+    const wrap = (L: Lookup): Lookup => ({ ...L, all: (kind) => L.all(kind).filter(visible) as never, extend: (extra) => wrap(L.extend(extra)) })
+    return wrap(full)
+  }, [hb, third, supp])
 }
 
 /** Lookup for en karakter (inkl. karakterens egne entities) */
