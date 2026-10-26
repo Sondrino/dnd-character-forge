@@ -2,7 +2,7 @@
 
 Windows-app for å lage, utvikle og spille D&D-karakterer etter **2024-reglene (5.5e)**: regeldata, terninger, tips og PDF-eksport samlet på ett sted.
 
-**[⬇ Last ned nyeste versjon](../../releases/latest)** · **[📖 Installeringsguide](INSTALLERING.md)**
+**[⬇ Last ned nyeste versjon](../../releases/latest)** · **[📖 Installeringsguide](INSTALLERING.md)** · **[🔒 Sikkerhet](SECURITY.md)**
 
 ## Funksjoner
 

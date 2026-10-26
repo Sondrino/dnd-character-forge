@@ -14,12 +14,12 @@ Gå til **[Releases](../../releases/latest)** og last ned én av filene under **
 
 | Fil | Når du bør velge den |
 |---|---|
-| `DnD-Character-Forge-Setup-1.2.0.exe` | **Anbefalt.** Installerer appen med snarvei på skrivebordet og i Start-menyen. |
-| `DnD-Character-Forge-1.2.0-Portable.exe` | Kjører uten installasjon, f.eks. fra en minnepinne. |
+| `DnD-Character-Forge-Setup-1.2.1.exe` | **Anbefalt.** Installerer appen med snarvei på skrivebordet og i Start-menyen. |
+| `DnD-Character-Forge-1.2.1-Portable.exe` | Kjører uten installasjon, f.eks. fra en minnepinne. |
 
 ## 2. Installer
 
-1. Dobbeltklikk på `DnD-Character-Forge-Setup-1.2.0.exe`.
+1. Dobbeltklikk på `DnD-Character-Forge-Setup-1.2.1.exe`.
 2. Windows viser sannsynligvis en blå boks: **«Windows beskyttet PC-en»**. Det skjer fordi appen ikke er kodesignert, noe som koster penger og er vanlig for hobbyprosjekter. Klikk **«Mer info»** og så **«Kjør likevel»**.
 3. Velg installasjonsmappe (standard er fin) og klikk **Installer**.
 4. Start appen fra skrivebordet eller Start-menyen.
@@ -61,7 +61,7 @@ Karakterene blir liggende i `%APPDATA%\dnd-character-forge`. Slett den mappen hv
 | Problem | Løsning |
 |---|---|
 | «Windows beskyttet PC-en» | Klikk «Mer info» → «Kjør likevel». |
-| Antivirus stopper filen | Legg filen til som unntak. Appen er ikke signert, og det kan gi falske alarmer. |
+| Antivirus stopper filen | Sjekk SHA-256-sjekksummen (se [SECURITY.md](SECURITY.md)) og legg filen til som unntak. Appen er ikke signert, og det kan gi falske alarmer. |
 | D&D Beyond-vinduet er tomt | Sjekk internettforbindelsen. Du kan også velge «Åpne i nettleser» under Innstillinger. |
 | PDF-en åpnes ikke | Sjekk at du har et PDF-program (Edge kan åpne PDF). |
 

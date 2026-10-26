@@ -82,7 +82,7 @@ export default function SettingsPage() {
       </Section>
       <Section title={t('settings.about')}>
         <div className="space-y-2 text-sm text-muted">
-          <p>D&D Character Forge 1.2 · {t('settings.entries', { n: allEntities.length })}</p>
+          <p>D&D Character Forge 1.2.1 · {t('settings.entries', { n: allEntities.length })}</p>
           <p>{ATTRIBUTION}</p>
           <p>{DISCLAIMER_PHB}</p>
           <p>{t('settings.trademark')}</p>

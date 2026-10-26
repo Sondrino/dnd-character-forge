@@ -7,6 +7,14 @@ files:
   - out/**/*
   - package.json
   - build/icon.png
+# Slår av Electron-funksjoner som kan misbrukes (kjøre som Node, debug-flagg) og sjekker at app-filene ikke er endret
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
 win:
   target:
     - nsis

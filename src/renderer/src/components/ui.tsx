@@ -4,12 +4,35 @@ import { createPortal } from 'react-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { X } from 'lucide-react'
+import { api } from '../lib/api'
+import { useSettings } from '../store/settings'
 import type { Source } from '../types'
 
 export function Markdown({ text, compact }: { text: string; compact?: boolean }) {
   return (
     <div className={`prose-dnd ${compact ? 'compact' : ''}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text || ''}</ReactMarkdown>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // Lenker åpnes aldri i appvinduet – bare http(s) via D&D Beyond-vinduet/nettleseren
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              rel="noopener noreferrer"
+              className="entity-link"
+              onClick={(e) => {
+                e.preventDefault()
+                if (href && /^https?:\/\//i.test(href)) api.openDndBeyond(href, useSettings.getState().dndBeyondMode)
+              }}
+            >
+              {children}
+            </a>
+          ),
+          img: () => null
+        }}
+      >
+        {text || ''}
+      </ReactMarkdown>
     </div>
   )
 }
