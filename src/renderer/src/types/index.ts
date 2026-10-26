@@ -1,0 +1,496 @@
+// Kjernetyper for regeldata og karakterer (D&D 2024 / SRD 5.2.1)
+
+export type Ability = 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha'
+export const ABILITIES: Ability[] = ['str', 'dex', 'con', 'int', 'wis', 'cha']
+
+export type SkillId =
+  | 'acrobatics' | 'animalHandling' | 'arcana' | 'athletics' | 'deception' | 'history'
+  | 'insight' | 'intimidation' | 'investigation' | 'medicine' | 'nature' | 'perception'
+  | 'performance' | 'persuasion' | 'religion' | 'sleightOfHand' | 'stealth' | 'survival'
+
+export type DamageType =
+  | 'acid' | 'bludgeoning' | 'cold' | 'fire' | 'force' | 'lightning' | 'necrotic'
+  | 'piercing' | 'poison' | 'psychic' | 'radiant' | 'slashing' | 'thunder'
+
+export type School =
+  | 'Abjuration' | 'Conjuration' | 'Divination' | 'Enchantment' | 'Evocation'
+  | 'Illusion' | 'Necromancy' | 'Transmutation'
+
+/** 'SRD 5.2' = full offisiell tekst under CC-BY-4.0.
+ *  'PHB 2024' = kun navn/mekanikk + kort sammendrag med egne ord (full tekst på D&D Beyond).
+ *  'Homebrew' = laget av brukeren. */
+export type Source = 'SRD 5.2' | 'PHB 2024' | 'Homebrew'
+
+export type EntityKind =
+  | 'class' | 'subclass' | 'species' | 'background' | 'feat' | 'spell' | 'weapon'
+  | 'armor' | 'gear' | 'tool' | 'magicItem' | 'condition' | 'rule' | 'language' | 'feature' | 'creature'
+
+/**
+ * Effect: en mekanisk modifikator som gjør at sheetet oppdaterer seg automatisk.
+ *
+ * Gyldige targets (strenger):
+ *  ability.<ab>            add | set | min           (f.eks. Belt of Giant Strength: min 21)
+ *  abilityMax.<ab>         add | set                 (heve maks-grensen 20)
+ *  ac                      add                       (Ring of Protection +1)
+ *  ac.unarmored            set  value: "10+dex+con"  (alternativ AC-formel uten rustning)
+ *  ac.armored              add                       (Defense fighting style: +1 med rustning)
+ *  save.<ab> | save.all    add | advantage | proficiency
+ *  skill.<id> | skill.all  add | advantage | disadvantage | proficiency | expertise
+ *  check.<ab> | check.all  add | advantage           (ability checks)
+ *  initiative              add | advantage | set ("prof" for Alert => value 'prof')
+ *  speed | speed.fly | speed.swim | speed.climb | speed.burrow   add | set
+ *  hp.max                  add
+ *  hp.perLevel             add                       (Tough +2, Dwarven Toughness +1)
+ *  attack.all | attack.melee | attack.ranged | attack.spell   add
+ *  damage.all | damage.melee | damage.ranged                  add
+ *  spell.dc | spell.attack add
+ *  spell.cantrips.<classId> add                     (flere cantrips, f.eks. Thaumaturge/Magician)
+ *  passive.perception      add
+ *  darkvision              min
+ *  resistance | immunity | vulnerability   grant value: DamageType
+ *  conditionImmunity       grant value: condition-id
+ *  proficiency.armor       grant value: 'light' | 'medium' | 'heavy' | 'shield'
+ *  proficiency.weapon      grant value: 'simple' | 'martial' | weapon-id
+ *  proficiency.tool        grant value: tool-id
+ *  language                grant value: language-id
+ *  sense                   grant value: "Blindsight 10 ft." osv.
+ */
+export interface Effect {
+  target: string
+  op: 'add' | 'set' | 'min' | 'advantage' | 'disadvantage' | 'proficiency' | 'expertise' | 'grant'
+  value?: number | string
+  /** Kort forklaring som vises i breakdown / tooltip */
+  note?: string
+  /** Bare aktiv når betingelsen er oppfylt, f.eks. 'noArmor', 'armored', 'raging', 'noShield' */
+  condition?: string
+}
+
+export interface Uses {
+  /** Tall, eller formel: 'prof' | 'mod.cha' | 'level' | 'mod.wis+0' (minst 1) */
+  count: number | string
+  recharge: 'short' | 'long' | 'turn' | 'dawn' | 'shortOrLong'
+}
+
+/** Et valg en feature/class/species gir (skills, feats, cantrips, osv.) */
+export interface Choice {
+  id: string
+  label: string
+  count: number
+  type: 'skill' | 'expertise' | 'tool' | 'language' | 'feat' | 'spell' | 'cantrip' | 'option' | 'weaponMastery' | 'ability'
+  /** Faste alternativer (ids eller fritekst) */
+  options?: string[]
+  /** Filter for f.eks. feat-kategori 'origin' eller spell-liste 'wizard' */
+  filter?: string
+}
+
+export interface BaseEntity {
+  id: string
+  name: string
+  kind: EntityKind
+  source: Source
+  /** 1–2 setninger: vises i den lille popupen */
+  summary: string
+  /** Full beskrivelse (markdown). For 'PHB 2024' er dette et kort sammendrag med egne ord. */
+  description: string
+  tags?: string[]
+  /** Direkte lenke om kjent, ellers lages søke-URL automatisk */
+  dndBeyondUrl?: string
+  effects?: Effect[]
+}
+
+export interface Feature {
+  id: string
+  name: string
+  level?: number
+  summary: string
+  description: string
+  effects?: Effect[]
+  choices?: Choice[]
+  uses?: Uses
+  /** Vises som handling på sheetet */
+  activation?: 'action' | 'bonus' | 'reaction' | 'passive' | 'special'
+}
+
+export type ArmorCategory = 'light' | 'medium' | 'heavy' | 'shield'
+
+export interface ItemGrant {
+  /** id fra weapons/armor/gear/tools; ellers fritekst i name */
+  id?: string
+  name?: string
+  qty?: number
+}
+
+export interface EquipmentOption {
+  label: string // 'A' | 'B' | 'C'
+  items: ItemGrant[]
+  gp: number
+}
+
+export interface ClassLevelRow {
+  level: number
+  profBonus: number
+  /** Navn på features som fås på dette nivået */
+  features: string[]
+  /** Klassespesifikke kolonner, f.eks. { Rages: 2, 'Rage Damage': '+2', 'Weapon Mastery': 2 } */
+  columns: Record<string, string | number>
+}
+
+export interface SpellcastingDef {
+  ability: Ability
+  /** full = Bard/Cleric/Druid/Sorcerer/Wizard, half = Paladin/Ranger, pact = Warlock */
+  progression: 'full' | 'half' | 'third' | 'pact'
+  /** Antall prepared spells per nivå (index 0 = nivå 1) */
+  prepared: number[]
+  /** Antall cantrips per nivå (index 0 = nivå 1); tom hvis ingen */
+  cantrips: number[]
+  spellList: string // class-id for spell-listen, f.eks. 'wizard'
+  ritualCasting?: boolean
+  focus?: string
+}
+
+export interface ClassDef extends BaseEntity {
+  kind: 'class'
+  hitDie: 6 | 8 | 10 | 12
+  /** Primary ability; flere = en av dem (f.eks. Fighter: str eller dex) */
+  primaryAbility: Ability[]
+  savingThrows: Ability[]
+  skillChoices: { count: number; options: SkillId[] }
+  weaponProficiencies: string[] // 'simple' | 'martial' | 'martial:finesse-or-light' | weapon-ids
+  armorTraining: ArmorCategory[]
+  toolProficiencies: string[] // fritekst/tool-ids, eller 'choice:musical:3'
+  startingEquipment: EquipmentOption[]
+  subclassLevel: number
+  table: ClassLevelRow[] // 20 rader
+  features: Feature[] // alle class features med level
+  spellcasting?: SpellcastingDef
+  multiclass: { prerequisite: string; proficiencies: string }
+  /** 2024 PHB «Quick build»-tips med egne ord */
+  quickBuild: string
+  tips: string[]
+  recommended: {
+    species?: string[]
+    backgrounds?: string[]
+    feats?: string[]
+    cantrips?: string[]
+    spells?: string[]
+    weapons?: string[]
+    fightingStyles?: string[]
+  }
+}
+
+/** Valgbare class-alternativer, f.eks. Eldritch Invocations, Metamagic, Maneuvers */
+export interface ClassOptionGroup {
+  classId: string
+  group: string // 'Eldritch Invocations' | 'Metamagic Options' | ...
+  source: Source
+  items: (Feature & { prerequisite?: string; source?: Source })[]
+}
+
+export interface SubclassDef extends BaseEntity {
+  kind: 'subclass'
+  classId: string
+  features: Feature[]
+  /** Spells som alltid er prepared, per class-nivå */
+  alwaysPrepared?: { level: number; spells: string[] }[]
+}
+
+export interface SpeciesOption {
+  id: string
+  name: string
+  summary: string
+  description: string
+  effects?: Effect[]
+  /** Spells fra lineage/legacy per karakternivå */
+  spells?: { level: number; spellId: string; note?: string }[]
+}
+
+export interface SpeciesDef extends BaseEntity {
+  kind: 'species'
+  creatureType: string
+  size: string // 'Medium' | 'Small' | 'Small or Medium'
+  speed: number
+  darkvision?: number
+  traits: Feature[]
+  /** Spells species-en alltid gir, per karakternivå (f.eks. Aasimar: Light) */
+  spells?: { level: number; spellId: string; note?: string }[]
+  /** Lineage / ancestry / legacy */
+  options?: { label: string; choices: SpeciesOption[] }
+}
+
+export interface BackgroundDef extends BaseEntity {
+  kind: 'background'
+  abilityScores: [Ability, Ability, Ability]
+  originFeat: string // feat-id
+  skills: [SkillId, SkillId]
+  tool: string // tool-id eller 'choice:gaming' / 'choice:artisan' / 'choice:musical'
+  equipment: EquipmentOption[]
+}
+
+export interface FeatDef extends BaseEntity {
+  kind: 'feat'
+  category: 'origin' | 'general' | 'fightingStyle' | 'epicBoon'
+  prerequisite?: string
+  minLevel?: number
+  repeatable?: boolean
+  /** +1 (eller annet) til en av disse */
+  abilityIncrease?: { options: Ability[]; amount: number }
+  choices?: Choice[]
+}
+
+export interface SpellDef extends BaseEntity {
+  kind: 'spell'
+  level: number // 0 = cantrip
+  school: School
+  castingTime: string
+  range: string
+  components: { v: boolean; s: boolean; m?: string }
+  duration: string
+  concentration: boolean
+  ritual: boolean
+  classes: string[] // class-ids
+  higherLevels?: string
+  /** For angreps-/skadeoversikt */
+  attack?: 'melee' | 'ranged'
+  save?: Ability
+  damage?: { dice: string; type: DamageType | string; cantripScaling?: boolean }
+  heal?: string
+}
+
+export type WeaponProperty =
+  | 'ammunition' | 'finesse' | 'heavy' | 'light' | 'loading' | 'range' | 'reach' | 'thrown' | 'two-handed' | 'versatile'
+
+export type MasteryId = 'cleave' | 'graze' | 'nick' | 'push' | 'sap' | 'slow' | 'topple' | 'vex'
+
+export interface WeaponDef extends BaseEntity {
+  kind: 'weapon'
+  category: 'simple' | 'martial'
+  weaponType: 'melee' | 'ranged'
+  damage: string // '1d8'
+  damageType: DamageType
+  properties: WeaponProperty[]
+  versatile?: string // '1d10'
+  range?: string // '80/320'
+  ammunition?: string
+  mastery: MasteryId
+  weight: number // lb
+  cost: string // '15 GP'
+}
+
+export interface ArmorDef extends BaseEntity {
+  kind: 'armor'
+  category: ArmorCategory
+  baseAC: number // skjold: 2
+  dexCap: number | null // null = ubegrenset (light), 2 = medium, 0 = heavy
+  strength?: number
+  stealthDisadvantage: boolean
+  weight: number
+  cost: string
+  donDoff: string
+}
+
+export interface GearDef extends BaseEntity {
+  kind: 'gear'
+  category?: string // 'Adventuring Gear' | 'Ammunition' | 'Arcane Focus' | 'Druidic Focus' | 'Holy Symbol' | 'Pack' | 'Container'
+  cost: string
+  weight: number
+  /** Innhold for packs */
+  contents?: ItemGrant[]
+}
+
+export interface ToolDef extends BaseEntity {
+  kind: 'tool'
+  category: 'artisan' | 'gaming' | 'musical' | 'other'
+  ability: Ability
+  utilize: string[]
+  craft: string[]
+  cost: string
+  weight: number
+}
+
+export interface MagicItemDef extends BaseEntity {
+  kind: 'magicItem'
+  itemType: string // 'Armor (Any Medium or Heavy)', 'Wondrous Item', 'Weapon (Any Simple or Martial)', 'Potion', 'Ring', 'Wand' ...
+  rarity: 'common' | 'uncommon' | 'rare' | 'very rare' | 'legendary' | 'artifact' | 'varies'
+  attunement: boolean | string
+  /** Bonus på våpen/rustning for +1/+2/+3-varianter */
+  bonus?: number
+  charges?: number
+}
+
+export interface ConditionDef extends BaseEntity {
+  kind: 'condition'
+}
+
+export interface RuleDef extends BaseEntity {
+  kind: 'rule'
+  category: string // 'Glossary' | 'Weapon Property' | 'Mastery' | 'Action' | 'Combat' | 'Character Creation' ...
+}
+
+/** Skapning/monster (SRD stat block) – brukes for Wild Shape, familiars, summons, companions */
+export interface CreatureDef extends BaseEntity {
+  kind: 'creature'
+  size: string // 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan'
+  creatureType: string // 'Beast', 'Dragon', 'Fiend' ...
+  alignment?: string
+  ac: number
+  hp: string // '13 (2d8 + 4)'
+  speed: string // '30 ft., Swim 30 ft.'
+  cr: string // '1/4'
+  abilities: Record<Ability, number>
+  /** description = hele stat blocken som markdown */
+}
+
+export interface LanguageDef extends BaseEntity {
+  kind: 'language'
+  rarity: 'standard' | 'rare'
+  origin?: string
+}
+
+export type AnyEntity =
+  | ClassDef | SubclassDef | SpeciesDef | BackgroundDef | FeatDef | SpellDef | WeaponDef
+  | ArmorDef | GearDef | ToolDef | MagicItemDef | ConditionDef | RuleDef | LanguageDef | CreatureDef
+  | (BaseEntity & { kind: 'feature'; level?: number; uses?: Uses; activation?: Feature['activation'] })
+
+/* ------------------------------------------------------------------ */
+/* Karakter                                                            */
+/* ------------------------------------------------------------------ */
+
+export interface ClassEntry {
+  classId: string
+  level: number
+  subclassId?: string
+  /** HP-resultat per nivå i denne classen; null = bruk snitt (fast verdi) */
+  hpRolls: (number | null)[]
+}
+
+export interface InventoryItem {
+  uid: string
+  /** Referanse til entity (data eller customEntities) */
+  refId?: string
+  /** Navn for fritekst-items uten referanse */
+  name?: string
+  qty: number
+  equipped: boolean
+  attuned: boolean
+  notes?: string
+  /** Våpen: gjør dette til et angrep på sheetet */
+  showAsAttack?: boolean
+  /** For magiske våpen/rustninger: underliggende våpen- eller rustnings-id */
+  baseId?: string
+  /** Manuell magisk bonus (+1/+2/+3) */
+  bonus?: number
+}
+
+export interface CharacterFeat {
+  uid: string
+  featId: string
+  /** 'background' | 'species' | 'class:fighter:4' | 'manual' */
+  source: string
+  abilityChoice?: Ability
+  choices?: Record<string, string[]>
+}
+
+export interface CharacterSpell {
+  spellId: string
+  /** class-id, 'species', 'feat:<id>', 'item', 'manual' */
+  source: string
+  prepared: boolean
+  alwaysPrepared?: boolean
+}
+
+export interface AbilityIncrease {
+  /** f.eks. 'class:fighter:4' */
+  source: string
+  ability: Ability
+  amount: number
+}
+
+export interface Character {
+  id: string
+  schemaVersion: 1
+  createdAt: string
+  updatedAt: string
+
+  name: string
+  playerName: string
+  portrait?: string // data-URL
+  alignment: string
+  xp: number
+
+  classes: ClassEntry[]
+  speciesId: string
+  speciesOptionId?: string
+  /** Størrelse når species tillater valg (Human/Tiefling: Small eller Medium) */
+  size?: string
+  backgroundId: string
+
+  abilityMethod: 'standard' | 'pointBuy' | 'roll' | 'manual'
+  baseAbilities: Record<Ability, number>
+  /** Background-bonus: +2/+1 eller +1/+1/+1 */
+  backgroundBonus: Partial<Record<Ability, number>>
+  abilityIncreases: AbilityIncrease[]
+
+  /** Generelle valg, nøkkel = choice-id med prefiks, f.eks. 'class:fighter:skills' */
+  choices: Record<string, string[]>
+  feats: CharacterFeat[]
+  spells: CharacterSpell[]
+  inventory: InventoryItem[]
+  currency: { cp: number; sp: number; ep: number; gp: number; pp: number }
+  /** Våpen-ids man har valgt Weapon Mastery for */
+  weaponMasteries: string[]
+
+  hp: { current: number; temp: number }
+  hitDiceUsed: Record<string, number> // '10' -> brukt
+  deathSaves: { successes: number; failures: number }
+  spellSlotsUsed: number[] // index 0 = 1st level
+  pactSlotsUsed: number
+  featureUses: Record<string, number> // feature-id -> brukt
+  conditions: string[]
+  exhaustion: number
+  /** Aktive tilstander som slår på betingede effects, f.eks. 'raging', 'mage-armor' */
+  activeStates: string[]
+  heroicInspiration: boolean
+
+  /** Ekstra proficiencies lagt inn manuelt */
+  extra: {
+    skills: SkillId[]
+    expertise: SkillId[]
+    saves: Ability[]
+    armor: ArmorCategory[]
+    weapons: string[]
+    tools: string[]
+    languages: string[]
+  }
+
+  details: {
+    gender: string
+    age: string
+    height: string
+    weight: string
+    eyes: string
+    hair: string
+    skin: string
+    faith: string
+    appearance: string
+    personality: string
+    ideals: string
+    bonds: string
+    flaws: string
+    backstory: string
+    allies: string
+    notes: string
+  }
+
+  /** Homebrew som bare gjelder denne karakteren */
+  customEntities: AnyEntity[]
+  /** Egne features (fritekst) */
+  customFeatures: Feature[]
+  /** Manuelle overstyringer av beregnede felt: 'ac' | 'initiative' | 'skill.stealth' | 'save.dex' | 'hp.max' ... */
+  overrides: Record<string, number | string>
+  /** Egne justeringer som legges OPPÅ den automatiske utregningen (f.eks. 'ability.str': 2). Samme nøkler som overrides. */
+  adjustments?: Record<string, number>
+  /** Manuelle effects (f.eks. "+1 AC fra velsignelse") */
+  customEffects: (Effect & { uid: string; label: string; active: boolean })[]
+
+  settings: { hpMethod: 'fixed' | 'roll' }
+}
