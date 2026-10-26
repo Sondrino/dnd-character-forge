@@ -14,12 +14,12 @@ Gå til **[Releases](../../releases/latest)** og last ned én av filene under **
 
 | Fil | Når du bør velge den |
 |---|---|
-| `D&D Character Forge Setup 1.2.0.exe` | **Anbefalt.** Installerer appen med snarvei på skrivebordet og i Start-menyen. |
-| `D&D Character Forge 1.2.0 Portable.exe` | Kjører uten installasjon, f.eks. fra en minnepinne. |
+| `DnD-Character-Forge-Setup-1.2.0.exe` | **Anbefalt.** Installerer appen med snarvei på skrivebordet og i Start-menyen. |
+| `DnD-Character-Forge-1.2.0-Portable.exe` | Kjører uten installasjon, f.eks. fra en minnepinne. |
 
 ## 2. Installer
 
-1. Dobbeltklikk på `D&D Character Forge Setup 1.2.0.exe`.
+1. Dobbeltklikk på `DnD-Character-Forge-Setup-1.2.0.exe`.
 2. Windows viser sannsynligvis en blå boks: **«Windows beskyttet PC-en»**. Det skjer fordi appen ikke er kodesignert, noe som koster penger og er vanlig for hobbyprosjekter. Klikk **«Mer info»** og så **«Kjør likevel»**.
 3. Velg installasjonsmappe (standard er fin) og klikk **Installer**.
 4. Start appen fra skrivebordet eller Start-menyen.

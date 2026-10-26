@@ -16,6 +16,6 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
-  artifactName: ${productName} Setup ${version}.${ext}
+  artifactName: DnD-Character-Forge-Setup-${version}.${ext}
 portable:
-  artifactName: ${productName} ${version} Portable.${ext}
+  artifactName: DnD-Character-Forge-${version}-Portable.${ext}
