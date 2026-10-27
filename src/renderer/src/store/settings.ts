@@ -15,6 +15,8 @@ export interface Settings {
   showThirdParty: boolean
   /** Vis sammendrag fra offisielle tilleggsbøker (Xanathar's, Tasha's …) */
   showSupplements: boolean
+  /** Bokfilter i velgerne, per type (f.eks. 'spell'); tom/mangler = alle bøker */
+  pickerBooks: Record<string, string[]>
 }
 
 const DEFAULTS: Settings = {
@@ -26,7 +28,8 @@ const DEFAULTS: Settings = {
   hpMethod: 'fixed',
   showTips: true,
   showThirdParty: true,
-  showSupplements: true
+  showSupplements: true,
+  pickerBooks: {}
 }
 
 interface SettingsState extends Settings {

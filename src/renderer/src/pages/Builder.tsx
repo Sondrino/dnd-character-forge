@@ -22,6 +22,7 @@ import { uid } from '../store/characters'
 import { DieShape } from '../components/Dice'
 import { syncGrantedSpells } from '../lib/sync'
 import { FaithPanel, FAITH_CLASSES } from '../components/Faith'
+import { BookFilterBar, useBookFilter } from '../components/BookFilter'
 import type { Lookup } from '../engine/lookup'
 
 type StepId = 'class' | 'origin' | 'abilities' | 'equipment' | 'spells' | 'details' | 'review'
@@ -371,7 +372,8 @@ function BackgroundPick() {
   const { char, derived, lookup: L, update } = useChar()
   const openDetail = useUi((s) => s.openDetail)
   const cls = L.get('class', char.classes[0]?.classId)
-  const list = L.all('background').sort((a, b) => a.name.localeCompare(b.name))
+  const bf = useBookFilter('background', L.all('background').sort((a, b) => a.name.localeCompare(b.name)))
+  const list = bf.filtered
   const cur = L.get('background', char.backgroundId)
   const choose = (b: BackgroundDef): void =>
     update((d) => {
@@ -387,6 +389,7 @@ function BackgroundPick() {
     })
   return (
     <div className="grid grid-cols-12 gap-4">
+      <BookFilterBar state={bf} className="col-span-12" />
       <div className="col-span-12 grid grid-cols-2 gap-2 lg:col-span-7 xl:grid-cols-3">
         {list.map((b, i) => {
           const on = cur?.id === b.id
@@ -449,7 +452,8 @@ function SpeciesPick() {
   const { char, derived, lookup: L, update } = useChar()
   const openDetail = useUi((s) => s.openDetail)
   const cls = L.get('class', char.classes[0]?.classId)
-  const list = L.all('species').sort((a, b) => a.name.localeCompare(b.name))
+  const bf = useBookFilter('species', L.all('species').sort((a, b) => a.name.localeCompare(b.name)))
+  const list = bf.filtered
   const cur = L.get('species', char.speciesId)
   const choose = (s: SpeciesDef): void =>
     update((d) => {
@@ -463,6 +467,7 @@ function SpeciesPick() {
     })
   return (
     <div className="grid grid-cols-12 gap-4">
+      <BookFilterBar state={bf} className="col-span-12" />
       <div className="col-span-12 grid grid-cols-2 gap-2 lg:col-span-6 xl:grid-cols-3">
         {list.map((s, i) => {
           const on = cur?.id === s.id

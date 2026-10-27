@@ -17,6 +17,27 @@ const M = 'Mastery'
 const EQ = 'Equipment'
 
 export const rules: RuleDef[] = [
+  {
+    id: 'phb-travel-costs',
+    name: 'Travel Costs',
+    kind: 'rule',
+    source: 'PHB 2024',
+    category: EQ,
+    summary: 'What it costs to ride a coach, pay a toll or book passage on a ship.',
+    description: `Paying for transport is often faster than walking. Prices from the services section of the 2024 Player’s Handbook:
+
+| Service | Cost |
+|---|---|
+| Coach ride between towns | 3 CP per mile |
+| Coach ride within a city | 1 CP per mile |
+| Road or gate toll | 1 CP |
+| Ship’s passage | 1 SP per mile |
+
+On a ship, a hammock costs about 5 SP per day and a small private cabin about 2 GP per day. Repairing a damaged ship takes 1 day and 20 GP per Hit Point restored (half the cost at a city shipyard).
+
+See also Lifestyle Expenses, Food, Drink, and Lodging, Hirelings and Spellcasting Services.`,
+    tags: ['services', 'cost']
+  },
   /* ------------------------ Weapon Properties ----------------------- */
   rule(
     'property-ammunition',

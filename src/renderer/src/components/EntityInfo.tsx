@@ -7,7 +7,7 @@ import type {
   AnyEntity, ArmorDef, BackgroundDef, ClassDef, EntityKind, FeatDef, GearDef, MagicItemDef, SpeciesDef, SpellDef,
   SubclassDef, ToolDef, WeaponDef
 } from '../types'
-import { Markdown, SourceBadge } from './ui'
+import { Markdown, SourceBadge, bookOf } from './ui'
 import { resolveEntity, useCharacter, useLookup, useUi, type DetailRef } from '../store/ui'
 import { dndBeyondUrl } from '../data'
 import { useSettings } from '../store/settings'
@@ -354,6 +354,7 @@ export function DetailDrawer() {
               <motion.h2 key={e.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mt-2 font-display text-3xl text-gold">
                 {e.name}
               </motion.h2>
+              {!!e.aliases?.length && <div className="text-xs text-muted">{t('info.aka', { names: e.aliases.join(', ') })}</div>}
               <p className="mt-1 font-serif text-[16px] italic text-muted">{e.summary}</p>
             </header>
             <div className="flex-1 overflow-y-auto px-6 py-5">
@@ -367,7 +368,7 @@ export function DetailDrawer() {
               )}
               {e.source === 'PHB 2024' && (
                 <div className="mt-6 rounded-xl border border-sky/30 bg-sky/5 p-3 text-sm text-muted">
-                  <BookOpen size={14} className="mr-1 inline" /> {t('info.phbNote')}
+                  <BookOpen size={14} className="mr-1 inline" /> {t('info.phbNote', { book: bookOf(e) })}
                 </div>
               )}
             </div>

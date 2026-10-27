@@ -22,6 +22,7 @@ function item(
     name,
     kind: 'magicItem',
     source: PHB,
+    sourceBook: 'Dungeon Master’s Guide (2024)',
     itemType,
     rarity,
     attunement,

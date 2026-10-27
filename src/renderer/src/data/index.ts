@@ -1,5 +1,6 @@
 import type { AnyEntity, ClassOptionGroup } from '../types'
 import { createLookup, type Lookup } from '../engine/lookup'
+import { SPELL_ALIASES } from './aliases'
 
 /**
  * Samler all regeldata automatisk fra filene i denne mappen.
@@ -30,6 +31,8 @@ for (const [path, mod] of Object.entries(modules)) {
   for (const v of Object.values(mod)) collect(v)
 }
 
+for (const e of entities) if (e.kind === 'spell' && SPELL_ALIASES[e.id]) e.aliases = [...(e.aliases ?? []), ...SPELL_ALIASES[e.id]]
+
 export const allEntities = entities
 export const baseLookup: Lookup = createLookup(entities, classOptions)
 
@@ -42,9 +45,10 @@ export const DISCLAIMER_PHB =
 const DDB = 'https://www.dndbeyond.com'
 
 /** D&D Beyond-lenke for en entity: direkte URL hvis kjent, ellers søk */
-export function dndBeyondUrl(e: { name: string; kind?: string; dndBeyondUrl?: string }): string {
+export function dndBeyondUrl(e: { name: string; kind?: string; dndBeyondUrl?: string; aliases?: string[] }): string {
   if (e.dndBeyondUrl) return e.dndBeyondUrl
-  const q = encodeURIComponent(e.name.replace(/\s*\(.*?\)\s*/g, ' ').trim())
+  // D&D Beyond bruker PHB-navnene (f.eks. «Melf’s Acid Arrow»)
+  const q = encodeURIComponent((e.aliases?.[0] ?? e.name).replace(/\s*\(.*?\)\s*/g, ' ').trim())
   switch (e.kind) {
     case 'spell':
       return `${DDB}/spells?filter-search=${q}`

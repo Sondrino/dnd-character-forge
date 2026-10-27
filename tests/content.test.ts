@@ -92,7 +92,7 @@ describe('new content', () => {
   it('every new spell has a valid level, school and classes', () => {
     for (const s of spellsPhb) {
       expect(s.kind).toBe('spell')
-      expect(s.source).toBe('PHB 2024')
+      expect(['PHB 2024', 'Supplement']).toContain(s.source)
       expect(Number.isInteger(s.level) && s.level >= 0 && s.level <= 9, s.id).toBe(true)
       expect(SCHOOLS, s.id).toContain(s.school)
       expect(s.classes.length, s.id).toBeGreaterThan(0)
@@ -104,7 +104,8 @@ describe('new content', () => {
 
   it('PHB/DMG entries carry the right source and only short own-words text', () => {
     for (const e of [...spellsPhb, ...magicItemsDmg, ...magicItemsDmg2]) {
-      expect(e.source, e.id).toBe('PHB 2024')
+      // Ikke-SRD offisielt innhold: PHB/DMG eller tilleggsbok (med boktittel)
+      expect(e.source === 'PHB 2024' || (e.source === 'Supplement' && !!e.sourceBook), e.id).toBe(true)
       expect(e.description.length, e.id).toBeLessThan(1500)
     }
     for (const e of speciesPhb) expect(e.source, e.id).toBe('PHB 2024')

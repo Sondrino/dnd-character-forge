@@ -13,7 +13,7 @@ export const nb = {
   tabs: { adjust: 'Egne verdier', sheet: 'Ark', spells: 'Spells', inventory: 'Utstyr', features: 'Features & valg', details: 'Detaljer', custom: 'Egne ting' },
   char: { builderTip: 'Endre class, species, background, ability scores, utstyr og mer', adjust: 'Egne verdier', adjustTip: 'Juster eller overstyr alle verdier for custom game', levelDown: 'Gå ned et level', notFound: 'Fant ikke karakteren.', builder: 'Rediger', levelUp: 'Level up' },
   info: { thirdPartyNote: 'Tredjepartsinnhold fra {{book}}, brukt under lisensen {{license}}. Det er ikke offisielt D&D-innhold – spør DM-en om det er tillatt i kampanjen. Se «Open Content Licenses» i Oppslag.', supplementNote: 'Offisiell tilleggsbok: {{book}}. Dette er bare et kort sammendrag med egne ord – full tekst finnes i boken eller på D&D Beyond.',
-    more: 'Mer info', openDdb: 'Åpne på D&D Beyond', phbNote: 'Dette er et kort sammendrag med egne ord. Full regeltekst finner du i Player’s Handbook (2024) eller på D&D Beyond.',
+    aka: 'I Player’s Handbook: {{names}}', more: 'Mer info', openDdb: 'Åpne på D&D Beyond', phbNote: 'Dette er et kort sammendrag med egne ord. Full regeltekst finner du i {{book}} eller på D&D Beyond.',
     addInventory: 'Legg i utstyr', owned: 'Har {{n}}', addSpell: 'Legg til spell', known: 'Kjent', addFeat: 'Legg til feat', hasFeat: 'Har denne',
     addedItem: '{{name}} lagt i utstyret', addedSpell: '{{name}} lagt til', addedFeat: '{{name}} lagt til'
   },
@@ -73,7 +73,7 @@ export const nb = {
     pickBackgroundFirst: 'Velg background først.', bgTotal: 'Brukt {{n}} av 3 poeng', addFeat: 'Legg til {{name}}', pickFeat: 'Velg feat',
     pickMastery: 'Velg våpen for Weapon Mastery'
   },
-  picker: { showMore: 'Vis flere ({{n}} til) – eller søk for å snevre inn', selected: 'Valgt {{n}} av {{max}}' },
+  picker: { books: 'Bøker:', allBooks: 'Alle bøker', booksHint: 'Klikk en bok for å vise bare den. Klikk flere for å ta med flere. Valget huskes.', clearBooks: 'Vis alle bøker ({{n}} skjult)', showMore: 'Vis flere ({{n}} til) – eller søk for å snevre inn', selected: 'Valgt {{n}} av {{max}}' },
   tips: {
     title: 'Tips & å gjøre', warning: 'Advarsler', todo: 'Å gjøre', suggestion: 'Forslag', info: 'Info', fix: 'Fiks dette', none: 'Ingen tips – alt ser bra ut! ✦'
   },

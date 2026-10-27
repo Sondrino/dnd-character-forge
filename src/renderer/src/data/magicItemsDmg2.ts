@@ -15,6 +15,7 @@ const common = (
   name,
   kind: 'magicItem',
   source: 'PHB 2024',
+  sourceBook: 'Dungeon Master’s Guide (2024)',
   itemType,
   rarity: 'common',
   attunement,

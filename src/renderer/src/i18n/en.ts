@@ -15,7 +15,7 @@ export const en: typeof nb = {
   tabs: { adjust: 'Custom values', sheet: 'Sheet', spells: 'Spells', inventory: 'Inventory', features: 'Features & choices', details: 'Details', custom: 'Custom' },
   char: { builderTip: 'Change class, species, background, ability scores, equipment and more', adjust: 'Custom values', adjustTip: 'Adjust or override any value for a custom game', levelDown: 'Level down', notFound: 'Character not found.', builder: 'Edit', levelUp: 'Level up' },
   info: { thirdPartyNote: 'Third-party content from {{book}}, used under the {{license}} license. It is not official D&D content – ask your DM whether it is allowed. See “Open Content Licenses” in the Compendium.', supplementNote: 'Official supplement: {{book}}. This is only a short summary in our own words – the full text is in the book or on D&D Beyond.',
-    more: 'More info', openDdb: 'Open on D&D Beyond', phbNote: 'This is a short summary in our own words. Read the full rules text in the 2024 Player’s Handbook or on D&D Beyond.',
+    aka: 'In the Player’s Handbook: {{names}}', more: 'More info', openDdb: 'Open on D&D Beyond', phbNote: 'This is a short summary in our own words. Read the full rules text in the {{book}} or on D&D Beyond.',
     addInventory: 'Add to inventory', owned: 'Own {{n}}', addSpell: 'Add spell', known: 'Known', addFeat: 'Add feat', hasFeat: 'Already have',
     addedItem: '{{name}} added to inventory', addedSpell: '{{name}} added', addedFeat: '{{name}} added'
   },
@@ -73,7 +73,7 @@ export const en: typeof nb = {
     pickBackgroundFirst: 'Choose a background first.', bgTotal: 'Used {{n}} of 3 points', addFeat: 'Add {{name}}', pickFeat: 'Choose feat',
     pickMastery: 'Choose Weapon Mastery weapons'
   },
-  picker: { showMore: 'Show more ({{n}} left) – or search to narrow down', selected: 'Selected {{n}} of {{max}}' },
+  picker: { books: 'Books:', allBooks: 'All books', booksHint: 'Click a book to show only that one. Click more to add them. Your choice is remembered.', clearBooks: 'Show all books ({{n}} hidden)', showMore: 'Show more ({{n}} left) – or search to narrow down', selected: 'Selected {{n}} of {{max}}' },
   tips: { title: 'Tips & to-do', warning: 'Warnings', todo: 'To do', suggestion: 'Suggestions', info: 'Info', fix: 'Fix this', none: 'No tips – everything looks good! ✦' },
   level: { downTitle: 'Level down', downDone: 'Level removed', downConfirm: 'Remove level', downMin: 'The character is already level 1.', downIntro: 'Choose which class loses a level. Choices tied to that level are removed.', downFeatures: 'Features removed', downFeats: 'Feats removed', downSubclass: 'Subclass removed: {{name}}', downClass: 'The class is removed entirely (multiclass)', downNote: 'Spells and equipment are kept – check the Spells tab afterwards.', undo: 'Undo level up',
     title: 'Level up', chooseClass: 'Choose which class gains level {{n}}:', max: 'Max level (20) reached.', current: 'Currently level {{n}}',

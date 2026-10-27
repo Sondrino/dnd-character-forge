@@ -7,6 +7,8 @@ import type { AnyEntity, EntityKind, FeatDef, MagicItemDef, SpellDef, WeaponDef 
 import { useLookup, useUi } from '../store/ui'
 import { InfoPopover, entityFacts, openDndBeyond } from '../components/EntityInfo'
 import { SourceBadge } from '../components/ui'
+import { matchesQuery } from '../lib/search'
+import { BookFilterBar, BookFilterReset, useBookFilter } from '../components/BookFilter'
 
 const KINDS: { kind: EntityKind; label: string }[] = [
   { kind: 'class', label: 'Classes' },
@@ -42,9 +44,9 @@ export default function Compendium() {
 
   const all = useMemo(() => L.all(kind).sort((a, b) => ((a as SpellDef).level ?? 0) - ((b as SpellDef).level ?? 0) || a.name.localeCompare(b.name)), [L, kind])
   const filters = filterDefs(kind, all, L)
-  const books = [...new Set(all.map((e) => e.sourceBook).filter((b): b is string => !!b))].sort()
-  const shown = all.filter((e) => {
-    if (q && !`${e.name} ${e.summary} ${(e.tags ?? []).join(' ')}`.toLowerCase().includes(q.toLowerCase())) return false
+  const bf = useBookFilter(`compendium:${kind}`, all)
+  const shown = bf.filtered.filter((e) => {
+    if (!matchesQuery(e, q, true)) return false
     if (source !== 'all' && e.source !== source && e.sourceBook !== source) return false
     if (filters[0] && f1 !== 'all' && !filters[0].test(e, f1)) return false
     if (filters[1] && f2 !== 'all' && !filters[1].test(e, f2)) return false
@@ -86,16 +88,6 @@ export default function Compendium() {
             <option value="Forgotten Realms">Forgotten Realms</option>
             <option value="Homebrew">Homebrew</option>
           </select>
-          {books.length > 0 && (
-            <select className="input w-56" value={books.includes(source) ? source : ''} onChange={(e) => setSource(e.target.value || 'all')}>
-              <option value="">{t('comp.allBooks')}</option>
-              {books.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          )}
           {filters[0] && (
             <select className="input w-44" value={f1} onChange={(e) => setF1(e.target.value)}>
               <option value="all">{filters[0].label}: {t('common.all')}</option>
@@ -117,6 +109,7 @@ export default function Compendium() {
             </select>
           )}
           <span className="ml-auto text-sm text-muted">{t('comp.count', { n: shown.length })}</span>
+          <BookFilterBar state={bf} className="w-full" />
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">

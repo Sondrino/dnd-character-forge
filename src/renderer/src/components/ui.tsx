@@ -182,7 +182,32 @@ const BOOK_ABBR: Record<string, string> = {
   "Explorer's Guide to Wildemount": 'Wildemount',
   'Explorer’s Guide to Wildemount': 'Wildemount',
   'Acquisitions Incorporated': 'Acq. Inc.',
-  'Spelljammer: Adventures in Space': 'Spelljammer'
+  'Spelljammer: Adventures in Space': 'Spelljammer',
+  'Dungeon Master’s Guide (2024)': 'DMG 2024',
+  'Monster Manual (2025)': 'MM 2025',
+  'Forgotten Realms: Heroes of Faerûn': 'Heroes of Faerûn'
+}
+
+export const PHB_BOOK = 'Player’s Handbook (2024)'
+
+/**
+ * Hvilken bok en entity kommer fra. SRD-innhold står også i kjernebøkene:
+ * magic items i Dungeon Master’s Guide, creatures i Monster Manual, resten i Player’s Handbook.
+ */
+export function bookOf(e: { source: Source | string; sourceBook?: string; kind?: string }): string {
+  if (e.sourceBook) return e.sourceBook
+  if (e.source === 'SRD 5.2' || e.source === 'PHB 2024') {
+    if (e.kind === 'magicItem') return 'Dungeon Master’s Guide (2024)'
+    if (e.kind === 'creature') return 'Monster Manual (2025)'
+    return PHB_BOOK
+  }
+  return e.source
+}
+
+/** Kort visningsnavn for en bok */
+export function bookLabel(book: string): string {
+  if (book === PHB_BOOK) return 'PHB 2024'
+  return BOOK_ABBR[book] ?? book.split(' (')[0]
 }
 
 export function SourceBadge({ source, book }: { source: Source | string; book?: string }) {
@@ -198,7 +223,7 @@ export function SourceBadge({ source, book }: { source: Source | string; book?: 
             : 'border-sky/40 text-sky'
   return (
     <span className={`chip ${cls}`} title={book}>
-      {source === 'Third-party' && book ? book.split(' (')[0] : source === 'Supplement' && book ? BOOK_ABBR[book] ?? book.slice(0, 22) : source}
+      {source === 'Third-party' && book ? book.split(' (')[0] : (source === 'Supplement' || source === 'PHB 2024') && book ? BOOK_ABBR[book] ?? book.slice(0, 22) : source}
     </span>
   )
 }

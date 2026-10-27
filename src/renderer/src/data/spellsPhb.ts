@@ -14,15 +14,26 @@ const CONC_1MIN = 'Concentration, up to 1 minute'
 const CONC_10MIN = 'Concentration, up to 10 minutes'
 const CONC_1H = 'Concentration, up to 1 hour'
 
+/** Spells som ligger her, men som ikke er i 2024 Player’s Handbook (kontrollert mot D&D Beyond sin PHB-liste) */
+const NOT_PHB: Record<string, string> = {
+  'chaos-bolt': "Xanathar's Guide to Everything",
+  'holy-weapon': "Xanathar's Guide to Everything",
+  'psychic-scream': "Xanathar's Guide to Everything",
+  'shadow-blade': "Xanathar's Guide to Everything",
+  'spirit-shroud': "Tasha's Cauldron of Everything"
+}
+
 function sp(o: SpellIn): SpellDef {
+  const book = NOT_PHB[o.id]
   return {
     kind: 'spell',
-    source: 'PHB 2024',
+    source: book ? 'Supplement' : 'PHB 2024',
+    ...(book ? { sourceBook: book } : {}),
     concentration: o.duration.startsWith('Concentration'),
     ritual: o.ritual ?? false,
     ...o,
     description: o.description ?? o.summary,
-    tags: [...(o.tags ?? []), 'phb-2024']
+    tags: [...(o.tags ?? []), book ? 'supplement' : 'phb-2024']
   }
 }
 
@@ -475,5 +486,21 @@ export const spellsPhb: SpellDef[] = [
     description:
       'Up to ten creatures in range make an Intelligence save. On a failure they take 14d6 Psychic damage and are Stunned (repeating the save each turn); on a success they take half damage.',
     save: 'int', damage: { dice: '14d6', type: 'psychic' }
+  }),
+  sp({
+    id: 'grasping-vine', name: 'Grasping Vine', level: 4, school: 'Conjuration', castingTime: 'Bonus Action', range: '60 feet',
+    components: { v: true, s: true }, duration: CONC_1MIN, classes: ['druid', 'ranger'],
+    summary: 'A thorny vine sprouts from the ground, lashing out to batter a creature and drag it in.',
+    description:
+      'A vine grows in an unoccupied space in range. When you cast it, and again as a Bonus Action on later turns, make a melee spell attack against a creature within 30 feet of the vine: on a hit it takes 4d8 Bludgeoning damage and is pulled up to 30 feet toward the vine. A Huge or smaller target is also Grappled (escape DC equals your spell save DC). The vine can hold only one creature at a time.',
+    higherLevels: 'The vine can grapple one additional creature for each slot level above 4.',
+    attack: 'melee', damage: { dice: '4d8', type: 'bludgeoning' }
+  }),
+  sp({
+    id: 'telepathy', name: 'Telepathy', level: 8, school: 'Divination', castingTime: 'Action', range: 'Unlimited',
+    components: { v: true, s: true, m: 'a pair of linked silver rings' }, duration: '24 hours', classes: ['wizard'],
+    summary: 'You open a mind-to-mind link with a familiar, willing creature anywhere on the same plane.',
+    description:
+      'Choose a willing creature you are familiar with. For the duration, the two of you can share words, images, sounds and other sensory messages with each other instantly, no matter the distance, as long as you are on the same plane of existence. The creature recognizes you as the other party and can understand you even without a shared language, though it needs an Intelligence of at least 1.'
   })
 ]

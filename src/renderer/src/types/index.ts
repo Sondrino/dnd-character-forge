@@ -101,6 +101,8 @@ export interface BaseEntity {
   /** Full beskrivelse (markdown). For 'PHB 2024' er dette et kort sammendrag med egne ord. */
   description: string
   tags?: string[]
+  /** Andre navn entityen er kjent under, f.eks. PHB-navnet «Melf’s Acid Arrow» for SRD-navnet «Acid Arrow» */
+  aliases?: string[]
   /** Direkte lenke om kjent, ellers lages søke-URL automatisk */
   dndBeyondUrl?: string
   effects?: Effect[]

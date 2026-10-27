@@ -382,10 +382,11 @@ Existence itself relies on the positive energy associated with this domain, so a
     id: 'knowledge-domain',
     name: 'Knowledge Domain',
     kind: 'subclass',
-    source: 'PHB 2024',
+    source: 'Supplement',
+    sourceBook: 'Forgotten Realms: Heroes of Faerûn',
     classId: 'cleric',
     summary: 'A Cleric devoted to learning and understanding, gifted with expert scholarship and mind-reading magic.',
-    description: `Knowledge Clerics serve gods of lore, secrets, and wisdom. They become experts in scholarly skills, gain domain spells focused on divination and the mind, can communicate telepathically, and eventually glimpse the future to gain an edge on their rolls. Full rules text is in the 2024 Player’s Handbook.`,
+    description: `Knowledge Clerics serve gods of lore, secrets, and wisdom. They become experts in scholarly skills, gain domain spells focused on divination and the mind, can communicate telepathically, and eventually glimpse the future to gain an edge on their rolls. Full rules text is in Forgotten Realms: Heroes of Faerûn (2025).`,
     features: [
       {
         id: 'knowledge-domain-blessings-of-knowledge',

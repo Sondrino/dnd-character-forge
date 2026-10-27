@@ -6,6 +6,8 @@ import type { AnyEntity, EntityKind, SpellDef } from '../types'
 import { Modal, SourceBadge } from './ui'
 import { useLookup, useUi } from '../store/ui'
 import { entityFacts } from './EntityInfo'
+import { matchesQuery } from '../lib/search'
+import { BookFilterBar, BookFilterReset, useBookFilter } from './BookFilter'
 
 export function EntityPicker({
   open, onClose, kinds, title, filter, multi = false, max, selected = [], onConfirm, extra = [], groupBy
@@ -43,11 +45,15 @@ export function EntityPicker({
     const list = kinds.flatMap((k) => L.all(k)).filter((e) => !filter || filter(e))
     return list.sort((a, b) => ((a as SpellDef).level ?? 0) - ((b as SpellDef).level ?? 0) || a.name.localeCompare(b.name))
   }, [L, kinds, filter])
+  // Bokfilteret huskes per type, så «bare PHB» gjelder neste gang også
+  const bf = useBookFilter([...kinds].sort().join(','), all)
+  const inBooks = bf.filtered
+  useEffect(() => setLimit(150), [bf.chosen])
   const isSpell = kinds.length === 1 && kinds[0] === 'spell'
-  const levels = isSpell ? [...new Set(all.map((s) => (s as SpellDef).level))].sort((a, b) => a - b) : []
-  const shown = all.filter(
+  const levels = isSpell ? [...new Set(inBooks.map((s) => (s as SpellDef).level))].sort((a, b) => a - b) : []
+  const shown = inBooks.filter(
     (e) =>
-      (!q || e.name.toLowerCase().includes(q.toLowerCase()) || e.summary?.toLowerCase().includes(q.toLowerCase())) &&
+      matchesQuery(e, q) &&
       (level === null || (e as SpellDef).level === level)
   )
   const groups = groupBy ? [...new Set(shown.map(groupBy))] : ['']
@@ -94,6 +100,7 @@ export function EntityPicker({
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
           <input autoFocus className="input pl-9" placeholder={t('common.search')} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        <BookFilterBar state={bf} />
         {levels.length > 1 && (
           <div className="flex flex-wrap gap-1">
             <button className={`btn btn-sm ${level === null ? 'btn-primary' : ''}`} onClick={() => setLevel(null)}>
@@ -161,7 +168,12 @@ export function EntityPicker({
           </div>
         </div>
       ))}
-      {!shown.length && <div className="py-10 text-center text-muted">{t('common.noResults')}</div>}
+      {!shown.length && (
+        <div className="py-10 text-center text-muted">
+          {t('common.noResults')}
+          <BookFilterReset state={bf} total={all.length} />
+        </div>
+      )}
       {groups.some((g) => shown.filter((e) => !groupBy || groupBy(e) === g).length > limit) && (
         <div className="py-3 text-center">
           <button className="btn" onClick={() => setLimit(limit + 300)}>
