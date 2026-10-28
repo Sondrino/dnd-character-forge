@@ -13,7 +13,7 @@ import { RollBox } from '../components/combat/RollBox'
 import { Resolver } from '../components/combat/Resolver'
 import { InitiativePanel, LogPanel, StatsPanel, StatusPanel, VitalsPanel } from '../components/combat/Panels'
 import { combatOptions, signed, useCombat, type CombatOption } from '../components/combat/useCombat'
-import { addLog, advanceTurn, castingKind, endEffects, initiativeOrder, movementLeft, newCombat, startOwnTurn } from '../lib/combat'
+import { addLog, advanceTurn, castingKind, endEffects, freeCasts, initiativeOrder, movementLeft, newCombat, startOwnTurn } from '../lib/combat'
 
 export default function CombatPage() {
   const { id } = useParams()
@@ -301,6 +301,15 @@ function Hints({ groups }: { groups: ReturnType<typeof combatOptions> }) {
     if (movementLeft(c, d.speed.value) > 0) hints.push({ tone: 'info', text: t('combat.hint.move', { n: movementLeft(c, d.speed.value) }) })
     if (c.turn.slotUsed) hints.push({ tone: 'info', text: t('combat.hint.oneSlot') })
   }
+  {
+    const frees: string[] = []
+    for (const o of [...groups.action, ...groups.bonus, ...groups.reaction, ...groups.other]) {
+      if (o.kind !== 'spell') continue
+      const fl = freeCasts(char, d, L, o.spell).filter((f) => f.left === null || f.left > 0)
+      if (fl.length) frees.push(`${o.spell.name} (${fl.map((f) => (f.left === null ? `${f.label}, ${t('combat.atWill')}` : `${f.label} ${f.left}/${f.max}`)).join('; ')})`)
+    }
+    if (frees.length && char.hp.current > 0) hints.push({ tone: 'good', text: t('combat.hint.free', { list: frees.join(', ') }) })
+  }
   if (c.concentration) hints.push({ tone: 'info', text: t('combat.hint.conc', { name: c.concentration.name }) })
   if (char.activeStates.includes('raging')) hints.push({ tone: 'info', text: t('combat.hint.rage') })
   for (const id of char.conditions) {
@@ -374,7 +383,7 @@ function OptionList({ title, icon, opts, used, onPick, groups }: { title: string
 
 function OptionCard({ o, onPick }: { o: CombatOption; onPick: (o: CombatOption) => void }) {
   const { t } = useTranslation()
-  const { derived: d } = useCombat()
+  const { char, derived: d, lookup: L } = useCombat()
   let name = ''
   let sub = ''
   let badge: React.ReactNode = null
@@ -388,8 +397,10 @@ function OptionCard({ o, onPick }: { o: CombatOption; onPick: (o: CombatOption) 
     const sp: SpellDef = o.spell
     name = sp.name
     sub = [sp.level === 0 ? 'Cantrip' : `Level ${sp.level}`, sp.range, sp.damage ? `${sp.damage.dice} ${sp.damage.type}` : sp.heal ? `${t('combat.healing')} ${sp.heal}` : '', sp.concentration ? 'C' : ''].filter(Boolean).join(' · ')
-    const canCast = sp.level === 0 || d.slots.some((s) => s.level >= sp.level && s.used < s.max) || (!!d.pact && d.pact.level >= sp.level && d.pact.used < d.pact.count)
-    if (!canCast) {
+    const free = freeCasts(char, d, L, sp).filter((f) => f.left === null || f.left > 0)
+    const canCast = sp.level === 0 || free.length > 0 || d.slots.some((s) => s.level >= sp.level && s.used < s.max) || (!!d.pact && d.pact.level >= sp.level && d.pact.used < d.pact.count)
+    if (free.length) badge = <span className="chip border-good/60 text-[10px] text-good" title={free.map((f) => f.label).join(', ')}>{t('combat.freeBadge')}</span>
+    else if (!canCast) {
       disabled = true
       badge = <span className="chip border-bad/50 text-[10px] text-bad">{t('combat.noSlots')}</span>
     } else if (castingKind(sp.castingTime) === 'long') badge = <span className="chip text-[10px]">{sp.castingTime}</span>

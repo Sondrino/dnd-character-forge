@@ -1,6 +1,6 @@
 import type { AnyEntity, ClassOptionGroup } from '../types'
 import { createLookup, type Lookup } from '../engine/lookup'
-import { SPELL_ALIASES } from './aliases'
+import { SPELL_ALIASES, SPELL_TEMP_HP } from './aliases'
 import { ARTIFICER_SPELL_IDS } from './supplements/tasha-artificer'
 
 /**
@@ -33,6 +33,12 @@ for (const [path, mod] of Object.entries(modules)) {
 }
 
 for (const e of entities) if (e.kind === 'spell' && SPELL_ALIASES[e.id]) e.aliases = [...(e.aliases ?? []), ...SPELL_ALIASES[e.id]]
+for (const e of entities) {
+  if (e.kind !== 'spell' || !SPELL_TEMP_HP[e.id]) continue
+  e.tempHp = SPELL_TEMP_HP[e.id]
+  // «120 Temporary Hit Points» er ikke helbredelse
+  if (e.heal && /temporary/i.test(e.heal)) delete e.heal
+}
 
 // Artificer-spell-listen (Tasha's Cauldron of Everything): legg 'artificer' til classes (ny array – noen spells deler class-arrays)
 {

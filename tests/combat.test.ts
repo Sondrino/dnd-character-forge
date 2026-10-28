@@ -141,3 +141,63 @@ describe('effects on the sheet', () => {
     expect(computeCharacter(ch, baseLookup).resistances).toContain('slashing')
   })
 })
+
+import { freeCasts, spellTempDice, featureGrantedSpells } from '../src/renderer/src/lib/combat'
+
+describe('temp HP and flat upcasting', () => {
+  it('reads flat per-level increases', () => {
+    expect(spellTempDice(spell('false-life'), 1, 3)).toBe('2d4+4')
+    expect(spellTempDice(spell('false-life'), 3, 3)).toBe('2d4+14')
+    expect(spellTempDice(spell('armor-of-agathys'), 2, 3)).toBe('10')
+    expect(spellTempDice(spell('heroism'), 1, 4)).toBe('4')
+    expect(spellHealDice(spell('heal'), 7, 3)).toBe('80')
+    expect(spell('power-word-fortify').heal).toBeUndefined()
+    expect(spell('power-word-fortify').tempHp).toBe('120')
+  })
+  it('Heroism refreshes temp HP at the start of your turn, Aid raises max HP', () => {
+    const ch = newCharacter({ classes: [{ classId: 'paladin', level: 3, hpRolls: [] }], speciesId: 'human', backgroundId: 'soldier' })
+    const c = newCombat('app', { uid: 'me', name: 'Hero', init: 10, self: true })
+    addEffect(c, ch, { name: 'Heroism', rounds: 10, spellId: 'heroism', tempEachTurn: 3 })
+    ch.hp.temp = 0
+    startOwnTurn(c, ch)
+    expect(ch.hp.temp).toBe(3)
+    const before = computeCharacter(ch, baseLookup).hpMax.value
+    addEffect(c, ch, { name: 'Aid', rounds: 4800, spellId: 'aid' }, 3)
+    expect(computeCharacter(ch, baseLookup).hpMax.value).toBe(before + 10)
+  })
+})
+
+describe('free casts', () => {
+  it('Magic Initiate gives one free cast per long rest, Ritual Caster does not', () => {
+    const ch = newCharacter({ classes: [{ classId: 'fighter', level: 1, hpRolls: [] }], speciesId: 'human', backgroundId: 'soldier' })
+    ch.feats.push({ uid: 'mi', featId: 'magic-initiate', source: 'background' }, { uid: 'rc', featId: 'ritual-caster', source: 'manual' })
+    ch.spells.push({ spellId: 'shield', source: 'feat:mi', prepared: true, alwaysPrepared: true }, { spellId: 'find-familiar', source: 'feat:rc', prepared: true, alwaysPrepared: true })
+    const d = computeCharacter(ch, baseLookup)
+    const f = freeCasts(ch, d, baseLookup, spell('shield'))
+    expect(f).toEqual([expect.objectContaining({ label: 'Magic Initiate', left: 1, max: 1, useKey: 'free:feat:mi:shield' })])
+    ch.featureUses['free:feat:mi:shield'] = 1
+    expect(freeCasts(ch, computeCharacter(ch, baseLookup), baseLookup, spell('shield'))[0].left).toBe(0)
+    expect(freeCasts(ch, d, baseLookup, spell('find-familiar'))).toEqual([])
+  })
+  it('Favored Enemy gives free Hunter’s Mark casts and adds the spell to combat', () => {
+    const ch = newCharacter({ classes: [{ classId: 'ranger', level: 1, hpRolls: [] }], speciesId: 'human', backgroundId: 'soldier' })
+    const d = computeCharacter(ch, baseLookup)
+    expect(featureGrantedSpells(d)).toContain('hunters-mark')
+    const f = freeCasts(ch, d, baseLookup, spell('hunters-mark'))
+    expect(f[0]).toMatchObject({ label: 'Favored Enemy', left: 2, max: 2 })
+  })
+  it('Armor of Shadows lets a warlock cast Mage Armor at will', () => {
+    const ch = newCharacter({ classes: [{ classId: 'warlock', level: 2, hpRolls: [] }], speciesId: 'human', backgroundId: 'sage' })
+    ch.choices['class:warlock:warlock-eldritch-invocations#option'] = ['armor-of-shadows']
+    const d = computeCharacter(ch, baseLookup)
+    expect(d.features.some((x) => x.key === 'option:armor-of-shadows')).toBe(true)
+    expect(featureGrantedSpells(d)).toContain('mage-armor')
+    expect(freeCasts(ch, d, baseLookup, spell('mage-armor'))[0]).toMatchObject({ left: null })
+  })
+  it('species spells are free once per long rest', () => {
+    const ch = newCharacter({ classes: [{ classId: 'fighter', level: 3, hpRolls: [] }], speciesId: 'tiefling', backgroundId: 'soldier' })
+    ch.spells.push({ spellId: 'hellish-rebuke', source: 'species', prepared: true, alwaysPrepared: true })
+    const f = freeCasts(ch, computeCharacter(ch, baseLookup), baseLookup, spell('hellish-rebuke'))
+    expect(f[0]).toMatchObject({ useKey: 'free:species:hellish-rebuke', left: 1 })
+  })
+})

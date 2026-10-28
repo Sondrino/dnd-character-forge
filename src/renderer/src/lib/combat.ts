@@ -1,4 +1,6 @@
-import type { Character, CombatEffect, CombatState, CombatTurn, Combatant, Effect, SpellDef } from '../types'
+import type { Character, CombatEffect, CombatState, CombatTurn, Combatant, Effect, FeatDef, SpellDef } from '../types'
+import type { Derived } from '../engine/compute'
+import type { Lookup } from '../engine/lookup'
 
 /** Ren kamplogikk (ingen React) – brukt av kampmodus og testet i tests/combat.test.ts */
 
@@ -49,15 +51,28 @@ export function castingKind(castingTime: string): CastKind {
   return 'long'
 }
 
-/** Ekstra terninger per slot-nivå over spellets nivå, lest fra «Using a Higher-Level Spell Slot» */
+/**
+ * Ekstra per slot-nivå over spellets nivå, lest fra «Using a Higher-Level Spell Slot»:
+ * terninger («1d6 for each …») eller faste tall («increases by 10 for each …», «5 additional Temporary Hit Points for each …»)
+ */
 export function upcastPerLevel(sp: Pick<SpellDef, 'higherLevels'>): string | undefined {
-  const m = sp.higherLevels?.match(/(\d+d\d+)\s+for each (?:spell )?slot level above/i)
+  const m = sp.higherLevels?.match(/(\d+(?:d\d+)?)\s+(?:additional\s+)?(?:temporary hit points\s+)?for each (?:spell )?slot level above/i)
   return m?.[1]
 }
 
-/** Legg sammen terningsuttrykk: «8d6» + 2×«1d6» = «10d6»; ulike terninger blir «8d6+2d8» */
+/** Legg sammen terningsuttrykk: «8d6» + 2×«1d6» = «10d6»; ulike terninger blir «8d6+2d8»; faste tall legges til konstanten */
 export function addDice(base: string, extra: string | undefined, times: number): string {
   if (!extra || times <= 0) return base
+  if (/^\d+$/.test(extra)) {
+    const add = Number(extra) * times
+    if (/^\d+$/.test(base)) return String(Number(base) + add)
+    const cm = base.match(/([+-])(\d+)$/)
+    if (cm) {
+      const v = (cm[1] === '-' ? -1 : 1) * Number(cm[2]) + add
+      return base.slice(0, -cm[0].length) + (v >= 0 ? `+${v}` : `${v}`)
+    }
+    return `${base}+${add}`
+  }
   const em = extra.match(/^(\d+)d(\d+)$/)
   if (!em) return base
   const n = Number(em[1]) * times
@@ -87,6 +102,13 @@ export function spellHealDice(sp: SpellDef, slotLevel: number, mod: number): str
   let h = sp.heal.replace(/\s*\+\s*(your )?spellcasting (ability )?modifier/i, mod ? (mod > 0 ? `+${mod}` : `${mod}`) : '').replace(/\s+/g, '')
   h = addDice(h, upcastPerLevel(sp), slotLevel - sp.level)
   return h
+}
+
+/** Temp HP fra et spell: «2d4+4» med oppskalering, «spellcasting modifier» → modifieren */
+export function spellTempDice(sp: SpellDef, slotLevel: number, mod: number): string | undefined {
+  if (!sp.tempHp) return undefined
+  const h = sp.tempHp.replace(/(your )?spellcasting (ability )?modifier/i, String(Math.max(1, mod))).replace(/\s+/g, '')
+  return addDice(h, upcastPerLevel(sp), slotLevel - sp.level)
 }
 
 /** Kritisk treff: dobbelt så mange skadeterninger, modifikatorer én gang */
@@ -182,7 +204,10 @@ export function deathSave(roll: number, saves: { successes: number; failures: nu
 export function startOwnTurn(c: CombatState, ch: Character): CombatEffect[] {
   c.turn = freshTurn()
   for (const e of c.effects) if (e.rounds !== undefined) e.rounds -= 1
-  return endEffects(c, ch, (e) => e.rounds !== undefined && e.rounds <= 0)
+  const gone = endEffects(c, ch, (e) => e.rounds !== undefined && e.rounds <= 0)
+  // Heroism o.l.: temp HP i starten av turen (temp HP stables ikke – høyeste gjelder)
+  for (const e of c.effects) if (e.tempEachTurn) ch.hp.temp = Math.max(ch.hp.temp, e.tempEachTurn)
+  return gone
 }
 
 /**
@@ -213,7 +238,8 @@ export function movementLeft(c: CombatState, speed: number): number {
 }
 
 /** Mekaniske effekter av vanlige buff-spells mens de varer (legges som midlertidige custom effects på arket) */
-export const SPELL_BUFFS: Record<string, { effects: Effect[]; note?: string }> = {
+export const SPELL_BUFFS: Record<string, { effects: Effect[] | ((slot: number) => Effect[]); note?: string }> = {
+  aid: { effects: (slot) => [{ target: 'hp.max', op: 'add', value: 5 * (slot - 1) }], note: '+HP max' },
   shield: { effects: [{ target: 'ac', op: 'add', value: 5 }], note: '+5 AC' },
   'shield-of-faith': { effects: [{ target: 'ac', op: 'add', value: 2 }], note: '+2 AC' },
   haste: { effects: [{ target: 'ac', op: 'add', value: 2 }, { target: 'save.dex', op: 'advantage' }], note: '+2 AC, advantage on DEX saves, double Speed, one extra limited action' },
@@ -223,12 +249,13 @@ export const SPELL_BUFFS: Record<string, { effects: Effect[]; note?: string }> =
 }
 
 /** Legg til en effekt; buff-spells får sine mekaniske effekter på arket så lenge effekten varer */
-export function addEffect(c: CombatState, ch: Character, e: Omit<CombatEffect, 'uid'>): CombatEffect {
+export function addEffect(c: CombatState, ch: Character, e: Omit<CombatEffect, 'uid'>, slotLevel = 1): CombatEffect {
   const eff: CombatEffect = { uid: uidc(), ...e }
   const buff = e.spellId ? SPELL_BUFFS[e.spellId] : undefined
   if (buff) {
     eff.note = eff.note ?? buff.note
-    eff.charEffects = buff.effects.map((x) => {
+    const list = typeof buff.effects === 'function' ? buff.effects(slotLevel) : buff.effects
+    eff.charEffects = list.map((x) => {
       const uid = `combat-${eff.uid}-${uidc()}`
       ch.customEffects.push({ ...x, uid, label: `${e.name} (${x.note ?? buff.note ?? 'combat'})`, active: true })
       return uid
@@ -258,6 +285,93 @@ export function endEffects(c: CombatState, ch: Character, pred: (e: CombatEffect
 export function dropConcentration(c: CombatState, ch: Character): void {
   endEffects(c, ch, (e) => !!e.concentration)
   c.concentration = undefined
+}
+
+/* ------------------------------------------------------------------ */
+/* Gratis-kast (uten spell slot)                                       */
+/* ------------------------------------------------------------------ */
+
+/** Invocations som lar deg kaste et spell «at will» uten slot (2024) */
+export const AT_WILL_INVOCATIONS: Record<string, string> = {
+  'armor-of-shadows': 'mage-armor',
+  'ascendant-step': 'levitate',
+  'fiendish-vigor': 'false-life',
+  'mask-of-many-faces': 'disguise-self',
+  'master-of-myriad-forms': 'alter-self',
+  'misty-visions': 'silent-image',
+  'one-with-shadows': 'invisibility',
+  'otherworldly-leap': 'jump',
+  'visions-of-distant-realms': 'arcane-eye',
+  'whispers-of-the-grave': 'speak-with-dead',
+  'pact-of-the-chain': 'find-familiar'
+}
+
+/** Class features som gir gratis-kast ved å bruke featurens (eller en annen features) bruk */
+const FEATURE_FREE: { name: RegExp; spell?: string; match?: (sp: SpellDef, ch: Character) => boolean; usesFrom?: RegExp }[] = [
+  { name: /^favored enemy$/i, spell: 'hunters-mark' },
+  { name: /^paladin['’]s smite$/i, spell: 'divine-smite' },
+  { name: /^faithful steed$/i, spell: 'find-steed' },
+  { name: /^wild companion$/i, spell: 'find-familiar', usesFrom: /^wild shape$/i },
+  { name: /^divine intervention$/i, match: (sp) => sp.classes.includes('cleric') && sp.level <= 5 },
+  { name: /^natural recovery$/i, match: (sp, ch) => ch.spells.some((s) => s.spellId === sp.id && s.alwaysPrepared && s.source === 'druid') }
+]
+
+export interface FreeCast {
+  id: string
+  label: string
+  /** null = ubegrenset (at will) */
+  left: number | null
+  max: number | null
+  /** featureUses-nøkkel som telles opp når kastet brukes */
+  useKey?: string
+}
+
+/** Alle måter å kaste et spell på uten å bruke en spell slot */
+export function freeCasts(ch: Character, d: Derived, L: Lookup, sp: SpellDef): FreeCast[] {
+  const out: FreeCast[] = []
+  if (sp.level === 0) return out
+  const feature = (re: RegExp) => d.features.find((f) => re.test(f.name))
+  // Invocations «at will»
+  for (const [inv, spellId] of Object.entries(AT_WILL_INVOCATIONS)) {
+    if (spellId !== sp.id) continue
+    const f = d.features.find((x) => x.key === `option:${inv}`)
+    if (f) out.push({ id: `atwill:${inv}`, label: f.name, left: null, max: null })
+  }
+  // Class features
+  for (const r of FEATURE_FREE) {
+    const f = feature(r.name)
+    if (!f) continue
+    if (r.spell ? r.spell !== sp.id : !r.match?.(sp, ch)) continue
+    const src = r.usesFrom ? feature(r.usesFrom) : f
+    if (!src?.uses) continue
+    out.push({ id: `feature:${src.key}`, label: r.usesFrom ? `${f.name} (${src.name})` : f.name, left: src.uses.max - src.uses.used, max: src.uses.max, useKey: src.key })
+  }
+  // Spells fra feats (Magic Initiate, Fey Touched …), species og Mystic Arcanum: 1 gang per long rest
+  const once = (key: string, label: string): void => {
+    if (out.some((o) => o.useKey === key)) return
+    const used = ch.featureUses?.[key] ?? 0
+    out.push({ id: key, label, left: Math.max(0, 1 - used), max: 1, useKey: key })
+  }
+  for (const cs of ch.spells.filter((s) => s.spellId === sp.id)) {
+    if (cs.source.startsWith('feat:')) {
+      const cf = ch.feats.find((f) => `feat:${f.uid}` === cs.source)
+      const fd = L.get('feat', cf?.featId ?? '') as FeatDef | undefined
+      if (fd && fd.id !== 'ritual-caster') once(`free:${cs.source}:${sp.id}`, fd.name)
+    } else if (cs.source === 'species') {
+      once(`free:species:${sp.id}`, L.get('species', ch.speciesId)?.name ?? 'Species')
+    } else if (cs.source === 'warlock' && d.pact && sp.level > d.pact.level) {
+      once(`free:arcanum:${sp.level}`, `Mystic Arcanum (${sp.level})`)
+    }
+  }
+  return out
+}
+
+/** Spells som features gir gratis-kast av, men som ikke nødvendigvis står i spell-lista (Hunter’s Mark, invocations …) */
+export function featureGrantedSpells(d: Derived): string[] {
+  const ids = new Set<string>()
+  for (const [inv, spellId] of Object.entries(AT_WILL_INVOCATIONS)) if (d.features.some((f) => f.key === `option:${inv}`)) ids.add(spellId)
+  for (const r of FEATURE_FREE) if (r.spell && d.features.some((f) => r.name.test(f.name))) ids.add(r.spell)
+  return [...ids]
 }
 
 export function addLog(c: CombatState, kind: CombatState['log'][number]['kind'], text: string): void {

@@ -268,6 +268,8 @@ export interface SpellDef extends BaseEntity {
   save?: Ability
   damage?: { dice: string; type: DamageType | string; cantripScaling?: boolean }
   heal?: string
+  /** Temporary Hit Points spellet gir, f.eks. '2d4+4' eller 'spellcasting modifier' */
+  tempHp?: string
 }
 
 export type WeaponProperty =
@@ -454,6 +456,8 @@ export interface CombatEffect {
   spellId?: string
   /** uid-er i character.customEffects som denne effekten la til (fjernes når effekten slutter) */
   charEffects?: string[]
+  /** Temp HP i starten av hver av dine turer (Heroism) */
+  tempEachTurn?: number
 }
 
 export interface Combatant {

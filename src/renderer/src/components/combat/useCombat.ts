@@ -2,7 +2,7 @@ import type { Character, CombatState, SpellDef } from '../../types'
 import type { DerivedAttack, DerivedFeature, Derived } from '../../engine/compute'
 import type { Lookup } from '../../engine/lookup'
 import { useChar, type CharCtxValue } from '../sheet/context'
-import { attacksPerAction, castingKind } from '../../lib/combat'
+import { AT_WILL_INVOCATIONS, attacksPerAction, castingKind, featureGrantedSpells } from '../../lib/combat'
 
 export interface CombatCtx extends CharCtxValue {
   c: CombatState
@@ -76,8 +76,20 @@ export function combatOptions(char: Character, d: Derived, L: Lookup): OptionGro
     if (k === 'long') g.other.push(opt)
     else g[k].push(opt)
   }
+  // Spells som features lar deg kaste gratis (Hunter’s Mark, invocations «at will» …)
+  for (const id of featureGrantedSpells(d)) {
+    const sp = L.get('spell', id) as SpellDef | undefined
+    if (!sp || seen.has(sp.id)) continue
+    seen.add(sp.id)
+    const k = castingKind(sp.castingTime)
+    const opt: CombatOption = { kind: 'spell', key: `sp:${sp.id}`, spell: sp, source: 'feature' }
+    if (k === 'long') g.other.push(opt)
+    else g[k].push(opt)
+  }
   // Features med handlingstype eller begrensede bruk
   for (const f of d.features) {
+    // Invocations som bare gir et gratis spell vises som spellet
+    if (f.key.startsWith('option:') && AT_WILL_INVOCATIONS[f.key.slice(7)]) continue
     const a = f.activation
     const opt: CombatOption = { kind: 'feature', key: `ft:${f.key}`, feature: f }
     if (a === 'action' || a === 'bonus' || a === 'reaction') g[a].push(opt)

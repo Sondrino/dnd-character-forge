@@ -8,7 +8,7 @@ import { Markdown, Modal } from '../ui'
 import { EntityLink } from '../EntityInfo'
 import { RollBox } from './RollBox'
 import { classColumn, featureStates, signed, useCombat, type CombatOption, type Economy } from './useCombat'
-import { SPELL_BUFFS, addEffect, addLog, attacksPerAction, castingKind, critDice, dropConcentration, durationRounds, initiativeOrder, spellDamageDice, spellHealDice } from '../../lib/combat'
+import { SPELL_BUFFS, addEffect, addLog, attacksPerAction, castingKind, critDice, dropConcentration, durationRounds, freeCasts, initiativeOrder, spellDamageDice, spellHealDice, spellTempDice, type FreeCast } from '../../lib/combat'
 
 const ABIL: Record<string, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
 
@@ -284,18 +284,21 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
 
 function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: string; onDone: () => void }) {
   const { t } = useTranslation()
-  const { char, derived: d, c, mut, physical } = useCombat()
+  const { char, derived: d, lookup: L, c, mut, physical } = useCombat()
+  const free = useMemo(() => freeCasts(char, d, L, sp), [char, d, L, sp])
+  const freeLeft = free.filter((f) => f.left === null || f.left > 0)
   const kind = castingKind(sp.castingTime)
   const econ: Economy = kind === 'long' ? 'action' : kind
   const caster = d.spellcasting.find((s) => s.classId === source) ?? d.spellcasting[0]
   const slotOpts = useMemo(() => {
     if (sp.level === 0) return []
-    const o: { id: string; level: number; label: string; pact?: boolean }[] = []
+    const o: { id: string; level: number; label: string; pact?: boolean; free?: FreeCast }[] = []
+    for (const f of freeLeft) o.push({ id: f.id, level: sp.level, free: f, label: t('combat.freeCast', { name: f.label, left: f.left === null ? t('combat.atWill') : `${f.left}/${f.max}` }) })
     for (const s of d.slots) if (s.level >= sp.level && s.max - s.used > 0) o.push({ id: `s${s.level}`, level: s.level, label: t('combat.slotLevel', { n: s.level, left: s.max - s.used }) })
     if (d.pact && d.pact.level >= sp.level && d.pact.count - d.pact.used > 0) o.push({ id: 'pact', level: d.pact.level, pact: true, label: t('combat.pactSlot', { n: d.pact.level, left: d.pact.count - d.pact.used }) })
     o.push({ id: 'free', level: sp.level, label: t('combat.noSlot') })
     return o
-  }, [d.slots, d.pact, sp.level])
+  }, [d.slots, d.pact, sp.level, free])
   const [slot, setSlot] = useState(slotOpts[0]?.id ?? 'free')
   const slotLevel = slotOpts.find((o) => o.id === slot)?.level ?? sp.level
   const [phase, setPhase] = useState<'cast' | 'resolve'>('cast')
@@ -304,7 +307,9 @@ function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: str
   const cast = (): void => {
     mut((cc, ch) => {
       const o = slotOpts.find((x) => x.id === slot)
-      if (o && o.id !== 'free') {
+      if (o?.free) {
+        if (o.free.useKey) ch.featureUses[o.free.useKey] = (ch.featureUses[o.free.useKey] ?? 0) + 1
+      } else if (o && o.id !== 'free') {
         if (o.pact) ch.pactSlotsUsed += 1
         else ch.spellSlotsUsed[o.level - 1] = (ch.spellSlotsUsed[o.level - 1] ?? 0) + 1
         cc.turn.slotUsed = true
@@ -314,11 +319,13 @@ function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: str
         dropConcentration(cc, ch)
         cc.concentration = { name: sp.name, spellId: sp.id, since: cc.round }
       }
-      if ((rounds && rounds > 1) || SPELL_BUFFS[sp.id] || sp.concentration) addEffect(cc, ch, { name: sp.name, rounds, concentration: sp.concentration, spellId: sp.id })
+      // Aid legges på i neste steg (bare hvis du selv er et av målene)
+      if (sp.id !== 'aid' && ((rounds && rounds > 1) || SPELL_BUFFS[sp.id] || sp.concentration)) addEffect(cc, ch, { name: sp.name, rounds, concentration: sp.concentration, spellId: sp.id }, slotLevel)
       cc.stats.spells += 1
-      addLog(cc, 'spell', `${sp.name}${sp.level > 0 ? ` (${t('combat.log.slot', { n: slotLevel })})` : ''}`)
+      const how = o?.free ? t('combat.log.free', { name: o.free.label }) : sp.level > 0 ? t('combat.log.slot', { n: slotLevel }) : ''
+      addLog(cc, 'spell', `${sp.name}${how ? ` (${how})` : ''}`)
     })
-    if (sp.attack || sp.save || sp.heal || sp.damage) setPhase('resolve')
+    if (sp.attack || sp.save || sp.heal || sp.damage || sp.tempHp || sp.id === 'aid') setPhase('resolve')
     else onDone()
   }
 
@@ -328,7 +335,13 @@ function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: str
       {phase === 'cast' && (
         <>
           <EconomyWarning e={econ} />
-          {sp.level > 0 && c.turn.slotUsed && (
+          {freeLeft.length > 0 && (
+            <div className="glow mb-3 rounded-xl border border-good/50 bg-good/10 px-3 py-2 text-sm text-good">
+              ✦ {t('combat.freeOffer', { spell: sp.name, name: freeLeft.map((f) => f.label).join(' / ') })}
+            </div>
+          )}
+          {free.length > 0 && !freeLeft.length && <p className="mb-3 text-xs text-muted">{t('combat.freeUsedUp', { name: free.map((f) => f.label).join(', ') })}</p>}
+          {sp.level > 0 && c.turn.slotUsed && !slotOpts.find((x) => x.id === slot)?.free && (
             <div className="mb-3 flex items-center gap-2 rounded-xl border border-crimson/40 bg-crimson/10 px-3 py-2 text-sm text-crimson-2">
               <AlertTriangle size={14} /> {t('combat.oneSlotRule')}
             </div>
@@ -354,6 +367,7 @@ function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: str
                 ))}
               </div>
               {slotOpts.length === 1 && <p className="mt-1 text-xs text-crimson-2">{t('combat.noSlotsLeft')}</p>}
+              {slotOpts.find((x) => x.id === slot)?.free && <p className="mt-1 text-xs text-good">{t('combat.freeNoSlot')}</p>}
             </div>
           )}
           <div className="flex items-center justify-between">
@@ -384,8 +398,10 @@ function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: str
           }}
         />
       )}
-      {phase === 'resolve' && !sp.attack && (sp.save || (sp.damage && !sp.heal)) && <SaveSpell sp={sp} dc={caster?.dc.value ?? 10} dice={dmgDice} onDone={onDone} />}
+      {phase === 'resolve' && !sp.attack && !sp.tempHp && (sp.save || (sp.damage && !sp.heal)) && <SaveSpell sp={sp} dc={caster?.dc.value ?? 10} dice={dmgDice} onDone={onDone} />}
       {phase === 'resolve' && !sp.attack && !sp.save && sp.heal && <HealSpell sp={sp} dice={spellHealDice(sp, slotLevel, caster?.mod ?? 0)} onDone={onDone} />}
+      {phase === 'resolve' && !sp.attack && !sp.heal && sp.tempHp && <TempSpell sp={sp} dice={spellTempDice(sp, slotLevel, caster?.mod ?? 0)} onDone={onDone} />}
+      {phase === 'resolve' && sp.id === 'aid' && <AidSpell slotLevel={slotLevel} onDone={onDone} />}
       {void physical}
       {void char}
     </div>
@@ -472,7 +488,8 @@ function SaveSpell({ sp, dc, dice, onDone }: { sp: SpellDef; dc: number; dice?: 
 function HealSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: () => void }) {
   const { t } = useTranslation()
   const { char, derived: d, c, mut, physical } = useCombat()
-  const [amount, setAmount] = useState<number | null>(sp.heal && /^\d+$/.test(sp.heal) ? Number(sp.heal) : null)
+  const all = /^all$/i.test(sp.heal ?? '')
+  const [amount, setAmount] = useState<number | null>(sp.heal && /^\d+$/.test(sp.heal) ? Number(sp.heal) : all ? Math.max(0, d.hpMax.value - char.hp.current) : null)
   const allies = c.combatants.filter((x) => x.ally && !x.defeated)
   const [target, setTarget] = useState('self')
   return (
@@ -490,7 +507,7 @@ function HealSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: 
           {t('combat.someoneElse')}
         </button>
       </div>
-      {dice && <RollBox label={t('combat.healing')} notation={dice} value={amount} onValue={(v) => setAmount(v)} physical={physical} character={char.name} />}
+      <RollBox label={t('combat.healing')} notation={dice ?? sp.heal ?? '?'} value={amount} onValue={(v) => setAmount(v)} physical={physical} character={char.name} hint={all ? t('combat.healAll') : undefined} />
       <div className="flex justify-end">
         <button
           className="btn btn-primary"
@@ -505,6 +522,94 @@ function HealSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: 
               }
               cc.stats.healed += n
               addLog(cc, 'heal', `${sp.name}: +${n} HP${target !== 'self' ? ` (${cc.combatants.find((x) => x.uid === target)?.name ?? t('combat.someoneElse')})` : ''}`)
+            })
+            onDone()
+          }}
+        >
+          <Heart size={14} /> {t('common.done')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** Spells som gir Temporary Hit Points (False Life, Armor of Agathys, Heroism, Power Word Fortify …) */
+function TempSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: () => void }) {
+  const { t } = useTranslation()
+  const { char, c, mut, physical } = useCombat()
+  const selfOnly = /^self$/i.test(sp.range)
+  const allies = c.combatants.filter((x) => x.ally && !x.defeated)
+  const [target, setTarget] = useState('self')
+  const [amount, setAmount] = useState<number | null>(dice && /^\d+$/.test(dice) ? Number(dice) : null)
+  const heroism = sp.id === 'heroism'
+  return (
+    <div className="space-y-3">
+      {!selfOnly && (
+        <div className="flex flex-wrap gap-1">
+          <button className={`btn btn-sm ${target === 'self' ? 'btn-primary' : ''}`} onClick={() => setTarget('self')}>
+            {char.name || t('combat.you')}
+          </button>
+          {allies.map((a) => (
+            <button key={a.uid} className={`btn btn-sm ${target === a.uid ? 'btn-primary' : ''}`} onClick={() => setTarget(a.uid)}>
+              {a.name}
+            </button>
+          ))}
+          <button className={`btn btn-sm ${target === 'other' ? 'btn-primary' : ''}`} onClick={() => setTarget('other')}>
+            {t('combat.someoneElse')}
+          </button>
+        </div>
+      )}
+      <RollBox label={t('combat.tempHp')} notation={dice ?? sp.tempHp ?? '?'} value={amount} onValue={(v) => setAmount(v)} physical={physical} character={char.name} />
+      <p className="text-xs text-muted">{heroism ? t('combat.heroismNote', { n: amount ?? '?' }) : t('combat.tempNote')}</p>
+      <div className="flex justify-end">
+        <button
+          className="btn btn-primary"
+          disabled={amount === null}
+          onClick={() => {
+            mut((cc, ch) => {
+              const n = amount ?? 0
+              if (target === 'self') {
+                ch.hp.temp = Math.max(ch.hp.temp, n)
+                if (heroism) {
+                  const e = cc.effects.find((x) => x.spellId === 'heroism')
+                  if (e) e.tempEachTurn = n
+                }
+              }
+              const who = target === 'self' ? char.name || t('combat.you') : (cc.combatants.find((x) => x.uid === target)?.name ?? t('combat.someoneElse'))
+              addLog(cc, 'heal', t('combat.log.tempFrom', { name: sp.name, n, who }))
+            })
+            onDone()
+          }}
+        >
+          <Heart size={14} /> {t('common.done')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** Aid: maks HP og nåværende HP øker med 5 per slot-nivå over 1 (5 på nivå 2) */
+function AidSpell({ slotLevel, onDone }: { slotLevel: number; onDone: () => void }) {
+  const { t } = useTranslation()
+  const { mut } = useCombat()
+  const n = 5 * (slotLevel - 1)
+  const [self, setSelf] = useState(true)
+  return (
+    <div className="space-y-3">
+      <p className="text-sm">{t('combat.aidText', { n })}</p>
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <input type="checkbox" checked={self} onChange={(e) => setSelf(e.target.checked)} /> {t('combat.aidSelf')}
+      </label>
+      <div className="flex justify-end">
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            mut((cc, ch) => {
+              if (self) {
+                addEffect(cc, ch, { name: 'Aid', rounds: 4800, spellId: 'aid', note: `+${n} HP max` }, slotLevel)
+                ch.hp.current += n
+              }
+              addLog(cc, 'heal', t('combat.log.aid', { n }))
             })
             onDone()
           }}
@@ -547,6 +652,11 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
   const poolHeal = pool && /lay on hands/i.test(f.name)
   useEffect(() => setSpendN(pool ? Math.min(5, left ?? 1) : 1), [pool])
   const isRage = /^rage$/i.test(f.name)
+  const text = `${f.summary} ${f.description}`
+  const mentionsTemp = /temporary hit points/i.test(text)
+  const mentionsHeal = !heal && !poolHeal && /regains? .{0,60}hit points|restore .{0,40}hit points/i.test(text)
+  const [extraTemp, setExtraTemp] = useState('')
+  const [extraHeal, setExtraHeal] = useState('')
   const rounds = isRage ? 100 : states.length ? 10 : undefined
 
   return (
@@ -574,6 +684,22 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
         </div>
       )}
       {heal && <RollBox label={t('combat.healing')} notation={heal} value={healAmt} onValue={(v) => setHealAmt(v)} physical={physical} character={char.name} />}
+      {(mentionsTemp || mentionsHeal) && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line-soft p-3 text-sm">
+          {mentionsTemp && (
+            <label className="flex items-center gap-2">
+              {t('combat.featureTemp')}
+              <input className="input w-20 text-center" inputMode="numeric" value={extraTemp} onChange={(e) => setExtraTemp(e.target.value.replace(/[^\d]/g, ''))} />
+            </label>
+          )}
+          {mentionsHeal && (
+            <label className="flex items-center gap-2">
+              {t('combat.featureHeal')}
+              <input className="input w-20 text-center" inputMode="numeric" value={extraHeal} onChange={(e) => setExtraHeal(e.target.value.replace(/[^\d]/g, ''))} />
+            </label>
+          )}
+        </div>
+      )}
       <div className="flex justify-end">
         <button
           className="btn btn-primary"
@@ -584,10 +710,12 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
               spend(cc, econ)
               for (const s of states) if (!ch.activeStates.includes(s)) ch.activeStates.push(s)
               if (states.length || isRage) addEffect(cc, ch, { name: f.name, rounds, state: states[0] })
-              const rolled = heal ? (healAmt ?? 0) : poolHeal ? spendN : 0
+              const rolled = heal ? (healAmt ?? 0) : poolHeal ? spendN : Number(extraHeal) || 0
+              const tempGain = Number(extraTemp) || 0
+              if (tempGain) ch.hp.temp = Math.max(ch.hp.temp, tempGain)
               const healed = rolled ? healSelf(cc, ch, rolled, d.hpMax.value) : 0
               cc.stats.healed += healed
-              addLog(cc, 'feature', `${f.name}${pool ? ` (${spendN})` : ''}${rolled ? ` – +${healed} HP` : ''}`)
+              addLog(cc, 'feature', `${f.name}${pool ? ` (${spendN})` : ''}${rolled ? ` – +${healed} HP` : ''}${tempGain ? ` – ${tempGain} temp HP` : ''}`)
             })
             onDone()
           }}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dices } from 'lucide-react'
-import type { RollMode, RollResult } from '../../dice'
+import { isValidNotation, type RollMode, type RollResult } from '../../dice'
 import { useRolls } from '../../store/rolls'
 
 /**
@@ -29,7 +29,9 @@ export function RollBox({
   const [text, setText] = useState(value === null ? '' : String(value))
   useEffect(() => setText(value === null ? '' : String(value)), [value])
 
+  const canRoll = isValidNotation(notation)
   const doRoll = (): void => {
+    if (!canRoll) return
     const r = roll(notation, label, { mode: d20 ? mode : 'normal', character })
     setLast(r)
     onValue(r.total, r)
@@ -67,9 +69,11 @@ export function RollBox({
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && commit((e.target as HTMLInputElement).value)}
         />
-        <button className={`btn ${physical ? 'btn-sm' : 'btn-primary'}`} onClick={doRoll} title={t('combat.rollInAppTip')}>
-          <Dices size={physical ? 13 : 15} /> {physical ? t('combat.rollInApp') : t('combat.roll')}
-        </button>
+        {canRoll && (
+          <button className={`btn ${physical ? 'btn-sm' : 'btn-primary'}`} onClick={doRoll} title={t('combat.rollInAppTip')}>
+            <Dices size={physical ? 13 : 15} /> {physical ? t('combat.rollInApp') : t('combat.roll')}
+          </button>
+        )}
         {last && (
           <span className={`text-sm ${last.crit ? 'font-bold text-good' : last.fumble ? 'font-bold text-bad' : 'text-muted'}`}>
             {last.terms.map((tm, i) => (

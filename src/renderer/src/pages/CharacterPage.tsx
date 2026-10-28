@@ -296,6 +296,8 @@ function applyRest(c: Character, kind: 'short' | 'long', d: Derived, hdSpent: Re
   }
   c.pactSlotsUsed = 0
   if (kind === 'long') {
+    // Gratis-kast fra feats, species og Mystic Arcanum (1 gang per long rest)
+    for (const k of Object.keys(c.featureUses)) if (k.startsWith('free:')) delete c.featureUses[k]
     c.hp.current = d.hpMax.value
     c.hp.temp = 0
     c.spellSlotsUsed = []
