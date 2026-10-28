@@ -1,3 +1,5 @@
+import { combatNb } from './combat'
+
 export const nb = {
   nav: { characters: 'Karakterer', compendium: 'Oppslag', homebrew: 'Homebrew', settings: 'Innstillinger', dice: 'Terninger' },
   common: {
@@ -181,5 +183,6 @@ export const nb = {
     baseScores: 'Endre grunnverdier', resetAll: 'Nullstill alle', abilities: 'Ability scores', saves: 'Saving throws', skills: 'Skills', combat: 'Kamp & annet',
     masteryCount: 'Antall Weapon Mastery', spellcasting: 'Spellcasting', slots: 'Spell slots nivå {{n}}', attacks: 'Angrep', attackBonus: 'angrepsbonus', damageBonus: 'skadebonus',
     auto: 'Auto', adjustment: 'Justering', fixed: 'Fast', result: 'Resultat'
-  }
+  },
+  combat: combatNb
 }

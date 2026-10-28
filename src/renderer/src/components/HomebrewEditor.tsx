@@ -16,7 +16,7 @@ const DAMAGE: DamageType[] = ['acid', 'bludgeoning', 'cold', 'fire', 'force', 'l
 const PROPS: WeaponProperty[] = ['ammunition', 'finesse', 'heavy', 'light', 'loading', 'reach', 'thrown', 'two-handed', 'versatile']
 const MASTERY: MasteryId[] = ['cleave', 'graze', 'nick', 'push', 'sap', 'slow', 'topple', 'vex']
 const SCHOOLS: School[] = ['Abjuration', 'Conjuration', 'Divination', 'Enchantment', 'Evocation', 'Illusion', 'Necromancy', 'Transmutation']
-const CLASSES = ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard']
+const CLASSES = ['artificer', 'bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard']
 
 export const EFFECT_TARGETS: { id: string; label: string }[] = [
   { id: 'ac', label: 'Armor Class' },

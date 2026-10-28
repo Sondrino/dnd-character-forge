@@ -55,7 +55,8 @@ export const MULTICLASS_PROFS: Record<string, { armor: ('light' | 'medium' | 'he
   rogue: { armor: ['light'], weapons: [], tools: ['thieves-tools'], skills: 1, note: 'One skill from the Rogue skill list and Thieves’ Tools' },
   sorcerer: { armor: [], weapons: [] },
   warlock: { armor: ['light'], weapons: [] },
-  wizard: { armor: [], weapons: [] }
+  wizard: { armor: [], weapons: [] },
+  artificer: { armor: ['light', 'medium', 'shield'], weapons: [], tools: ['thieves-tools', 'tinkers-tools'] }
 }
 
 /** Gjennomsnittlig HP per nivå etter nivå 1 (2024: fast verdi) */

@@ -1,4 +1,4 @@
-import { Axe, Eye, Flame, Hand, Leaf, Music, ShieldCheck, Sun, Swords, Target, User, VenetianMask, WandSparkles } from 'lucide-react'
+import { Axe, Eye, Flame, Hand, Leaf, Music, ShieldCheck, Sun, Swords, Target, User, VenetianMask, WandSparkles, Wrench } from 'lucide-react'
 
 const ICONS: Record<string, typeof Axe> = {
   barbarian: Axe,
@@ -12,7 +12,8 @@ const ICONS: Record<string, typeof Axe> = {
   rogue: VenetianMask,
   sorcerer: Flame,
   warlock: Eye,
-  wizard: WandSparkles
+  wizard: WandSparkles,
+  artificer: Wrench
 }
 
 export const CLASS_COLORS: Record<string, string> = {
@@ -27,7 +28,8 @@ export const CLASS_COLORS: Record<string, string> = {
   rogue: '#8a8f99',
   sorcerer: '#e0574a',
   warlock: '#8b5cf6',
-  wizard: '#5aa9e6'
+  wizard: '#5aa9e6',
+  artificer: '#c98b3a'
 }
 
 export function ClassEmblem({ classId, size = 40 }: { classId?: string; size?: number }) {

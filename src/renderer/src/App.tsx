@@ -12,6 +12,7 @@ import { DiceTray, RollToast } from './components/Dice'
 import Home from './pages/Home'
 import CharacterPage from './pages/CharacterPage'
 import Builder from './pages/Builder'
+import CombatPage from './pages/Combat'
 import Compendium from './pages/Compendium'
 import HomebrewPage from './pages/Homebrew'
 import SettingsPage from './pages/Settings'
@@ -59,6 +60,7 @@ function Shell() {
               <Route path="/" element={<Home />} />
               <Route path="/character/:id" element={<CharacterPage />} />
               <Route path="/character/:id/build" element={<Builder />} />
+              <Route path="/character/:id/combat" element={<CombatPage />} />
               <Route path="/compendium" element={<Compendium />} />
               <Route path="/compendium/:kind" element={<Compendium />} />
               <Route path="/homebrew" element={<HomebrewPage />} />

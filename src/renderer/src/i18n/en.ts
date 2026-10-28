@@ -1,4 +1,5 @@
 import type { nb } from './nb'
+import { combatEn } from './combat'
 
 export const en: typeof nb = {
   nav: { characters: 'Characters', compendium: 'Compendium', homebrew: 'Homebrew', settings: 'Settings', dice: 'Dice' },
@@ -179,5 +180,6 @@ export const en: typeof nb = {
     baseScores: 'Change base scores', resetAll: 'Reset all', abilities: 'Ability scores', saves: 'Saving throws', skills: 'Skills', combat: 'Combat & other',
     masteryCount: 'Weapon Mastery count', spellcasting: 'Spellcasting', slots: 'Spell slots level {{n}}', attacks: 'Attacks', attackBonus: 'attack bonus', damageBonus: 'damage bonus',
     auto: 'Auto', adjustment: 'Adjustment', fixed: 'Fixed', result: 'Result'
-  }
+  },
+  combat: combatEn
 }

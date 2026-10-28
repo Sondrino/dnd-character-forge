@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ArrowUp, ArrowDown, Coffee, Download, FileText, Lightbulb, Moon, Wand2, Check, SlidersHorizontal } from 'lucide-react'
+import { ArrowLeft, ArrowUp, ArrowDown, Coffee, Download, FileText, Lightbulb, Moon, Wand2, Check, SlidersHorizontal, Swords } from 'lucide-react'
 import { useCharacter, useUi } from '../store/ui'
 import { useCharacters } from '../store/characters'
 import { useSettings } from '../store/settings'
@@ -42,7 +42,8 @@ export default function CharacterPage() {
   const [guide, setGuide] = useState<{ open: boolean; key?: string; area?: 'spells' | 'other' }>({ open: params.get('guide') === '1' })
   const openGuide = (key?: string, area?: 'spells' | 'other'): void => setGuide({ open: true, key, area })
   const [pdf, setPdf] = useState(false)
-  const [rest, setRest] = useState<'short' | 'long' | null>(null)
+  // ?rest=short åpner short rest direkte (f.eks. etter en kamp)
+  const [rest, setRest] = useState<'short' | 'long' | null>(params.get('rest') === 'short' ? 'short' : null)
   const tab = (params.get('tab') as TabId) || 'sheet'
   const setTab = (x: string): void => {
     if (x === 'build') nav(`/character/${id}/build?step=abilities`)
@@ -134,6 +135,14 @@ export default function CharacterPage() {
             </div>
           </div>
           <div className="ml-auto flex flex-wrap gap-2">
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              className={`btn ${char.combat ? 'glow border-crimson/60 text-crimson-2' : 'border-crimson/40'}`}
+              onClick={() => nav(`/character/${char.id}/combat`)}
+              title={t('combat.openTip')}
+            >
+              <Swords size={15} /> {char.combat ? t('combat.resume', { n: char.combat.round }) : t('combat.open')}
+            </motion.button>
             <button className="btn" onClick={() => setRest('short')} title={t('rest.short')}>
               <Coffee size={15} /> {t('rest.shortBtn')}
             </button>

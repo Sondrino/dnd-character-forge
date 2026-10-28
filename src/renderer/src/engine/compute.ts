@@ -296,6 +296,15 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
         featureChoices.push({ feature: f, source: `${sub.name}: ${f.name}`, keyBase: `subclass:${sub.id}:${f.id}`, area: 'class', columns: row?.columns })
       }
     }
+    // Valgfrie tool proficiencies fra første class (Bard: 3 instrumenter, Monk, Artificer …)
+    if (idx === 0) {
+      for (const tp of def.toolProficiencies ?? []) {
+        const m = /^choice:([^:]+):(\d+)$/.exec(tp)
+        if (!m) continue
+        const k = `class:${def.id}:tools#tool`
+        choice({ key: k, label: `${def.name}: tool proficiencies`, area: 'class', type: 'tool', count: Number(m[2]), chosen: (char.choices?.[k] ?? []).length, filter: m[1], source: def.name })
+      }
+    }
     if (ce.level >= def.subclassLevel) {
       choice({ key: `subclass:${def.id}`, label: `${def.name} subclass`, area: 'class', type: 'subclass', count: 1, chosen: sub ? 1 : 0, filter: def.id, source: def.name })
     }
@@ -415,7 +424,12 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
   {
     const optionItems = new Map<string, { item: Feature; group: string }>()
     for (const g of L.classOptions) for (const it of g.items) optionItems.set(it.id, { item: it, group: g.group })
-    for (const v of new Set(valuesOfType(char, 'option'))) {
+    // Alternativer valgt via feats (Eldritch Adept, Metamagic Adept, Superior Technique …)
+    const fromFeats = (char.feats ?? []).flatMap((cf) => {
+      const fd = L.get('feat', cf.featId) as FeatDef | undefined
+      return (fd?.choices ?? []).filter((ch) => ch.type === 'option').flatMap((ch) => cf.choices?.[ch.id] ?? [])
+    })
+    for (const v of new Set([...valuesOfType(char, 'option'), ...fromFeats])) {
       const hit = optionItems.get(v)
       if (!hit) continue
       const key = `option:${hit.item.id}`
@@ -584,6 +598,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     if (fc.sourceType === 'subclass') return classEntries.flatMap((x) => x.sub?.features ?? []).find((f) => f.id === fc.id)
     if (fc.sourceType === 'species') return species?.traits.find((t) => t.id === fc.id)
     if (fc.sourceType === 'custom') return char.customFeatures?.find((f) => f.id === fc.id)
+    if (fc.sourceType === 'option') return L.classOptions.flatMap((g) => g.items).find((f) => f.id === fc.id)
     return undefined
   }
 

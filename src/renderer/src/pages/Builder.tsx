@@ -174,7 +174,8 @@ function ClassStep() {
   const { t } = useTranslation()
   const { char, derived, lookup: L, update } = useChar()
   const openDetail = useUi((s) => s.openDetail)
-  const classes = L.all('class').sort((a, b) => a.name.localeCompare(b.name))
+  const bf = useBookFilter('class', L.all('class').sort((a, b) => a.name.localeCompare(b.name)))
+  const classes = bf.filtered
   const current = L.get('class', char.classes[0]?.classId)
   const skillKey = current ? `class:${current.id}:skills#skill` : ''
   const pending = derived.pending.filter((p) => p.key !== skillKey && (p.area === 'skills' || p.area === 'class' || (p.area === 'feats' && p.key.startsWith('class:'))))
@@ -199,6 +200,7 @@ function ClassStep() {
 
   return (
     <div className="space-y-6">
+      <BookFilterBar state={bf} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         {classes.map((c, i) => {
           const on = current?.id === c.id
@@ -234,6 +236,7 @@ function ClassStep() {
                 <span className="chip">d{c.hitDie}</span>
                 <span className="chip">{c.primaryAbility.map((a) => a.toUpperCase()).join('/')}</span>
                 {c.spellcasting && <span className="chip text-arcane">Spells</span>}
+                {c.source !== 'SRD 5.2' && c.source !== 'PHB 2024' && <SourceBadge source={c.source} book={c.sourceBook} />}
               </div>
               {on && (
                 <motion.span layoutId="class-check" className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-gold text-[#1d1408]">
@@ -252,7 +255,7 @@ function ClassStep() {
               <ClassEmblem classId={current.id} size={30} />
               <div>
                 <div className="font-display text-2xl text-gold">{current.name}</div>
-                <SourceBadge source={current.source} />
+                <SourceBadge source={current.source} book={current.sourceBook} />
               </div>
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-sm text-muted">{t('builder.startLevel')}</span>

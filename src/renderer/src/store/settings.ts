@@ -17,6 +17,8 @@ export interface Settings {
   showSupplements: boolean
   /** Bokfilter i velgerne, per type (f.eks. 'spell'); tom/mangler = alle bøker */
   pickerBooks: Record<string, string[]>
+  /** Sist valgte terningmodus i kampmodus */
+  combatDice?: 'physical' | 'app'
 }
 
 const DEFAULTS: Settings = {

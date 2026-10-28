@@ -438,6 +438,76 @@ export interface AbilityIncrease {
   amount: number
 }
 
+/* ------------------------------------------------------------------ */
+/* Kampmodus                                                           */
+/* ------------------------------------------------------------------ */
+
+/** Effekt med varighet i runder (spells, Rage, Dodge …). rounds = undefined: varer til den fjernes */
+export interface CombatEffect {
+  uid: string
+  name: string
+  rounds?: number
+  note?: string
+  /** Slår på en aktiv tilstand (f.eks. 'raging') mens effekten varer */
+  state?: string
+  concentration?: boolean
+  spellId?: string
+  /** uid-er i character.customEffects som denne effekten la til (fjernes når effekten slutter) */
+  charEffects?: string[]
+}
+
+export interface Combatant {
+  uid: string
+  name: string
+  init: number
+  /** Karakteren selv */
+  self?: boolean
+  ally?: boolean
+  hp?: number
+  maxHp?: number
+  ac?: number
+  conditions?: string[]
+  defeated?: boolean
+  note?: string
+}
+
+export interface CombatLogEntry {
+  uid: string
+  round: number
+  kind: 'attack' | 'damage' | 'heal' | 'spell' | 'save' | 'feature' | 'turn' | 'info' | 'death' | 'action'
+  text: string
+}
+
+export interface CombatTurn {
+  action: boolean
+  bonus: boolean
+  reaction: boolean
+  /** Fot brukt av bevegelsen denne turen */
+  movement: number
+  /** Antall angrep brukt i Attack-handlingen */
+  attacks: number
+  /** 2024: maks én spell slot per tur */
+  slotUsed: boolean
+  dashed: boolean
+  interaction: boolean
+}
+
+/** Pågående kamp – lagres på karakteren så den overlever omstart */
+export interface CombatState {
+  /** 'physical' = ekte terninger (skriv inn resultater), 'app' = rull i appen */
+  dice: 'physical' | 'app'
+  round: number
+  /** Indeks i initiativ-rekkefølgen (sortert) */
+  turnIdx: number
+  combatants: Combatant[]
+  turn: CombatTurn
+  effects: CombatEffect[]
+  concentration?: { name: string; spellId?: string; since: number }
+  log: CombatLogEntry[]
+  stats: { dealt: number; taken: number; healed: number; spells: number; crits: number; hits: number; misses: number }
+  startedAt: string
+}
+
 export interface Character {
   id: string
   schemaVersion: 1
@@ -528,4 +598,6 @@ export interface Character {
   customEffects: (Effect & { uid: string; label: string; active: boolean })[]
 
   settings: { hpMethod: 'fixed' | 'roll' }
+  /** Pågående kamp (kampmodus) */
+  combat?: CombatState
 }

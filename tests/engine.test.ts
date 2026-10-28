@@ -24,8 +24,8 @@ function fighter(): Character {
 describe('data', () => {
   it('har lastet regeldata', () => {
     const count = (k: string) => allEntities.filter((e) => e.kind === k).length
-    expect(count('class')).toBe(12)
-    expect(count('species')).toBe(10) // 9 SRD + Aasimar (PHB 2024)
+    expect(count('class')).toBe(13) // 12 PHB + Artificer (TCE)
+    expect(count('species')).toBe(11) // 9 SRD + Aasimar (PHB 2024) + Custom Lineage (TCE)
     expect(count('spell')).toBeGreaterThan(300)
     expect(count('weapon')).toBeGreaterThan(30)
     expect(count('magicItem')).toBeGreaterThan(200)
