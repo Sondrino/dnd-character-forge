@@ -27,6 +27,7 @@ export const en: typeof nb = {
   },
   stat: { custom: 'Custom adjustment', editTitle: 'Edit value', auto: 'Automatically calculated', adjustment: 'Custom adjustment (+/−)', adjustmentHint: 'Added on top of the calculation – still updates automatically.', fixed: 'Fixed value (optional)', fixedPlaceholder: 'Empty = automatic', fixedHint: 'Replaces the whole calculation. Leave empty to use automation.', resetAll: 'Reset to automatic', advantage: 'Advantage', disadvantage: 'Disadvantage', overridden: 'Set manually (computed: {{v}})', reset: 'Reset', edit: 'Edit or adjust value' },
   sheet: {
+    exhaustionEffect: '−{{d}} to D20 Tests · −{{s}} ft. Speed · a long rest removes 1 level', exhaustionDead: 'Exhaustion 6 – the character dies.', 
     unarmored: 'Unarmored', initiative: 'Initiative', speed: 'Speed', passivePerception: 'Passive Perc.', inspiration: 'Inspiration',
     size: 'Size', passiveInsight: 'Passive Insight', passiveInvestigation: 'Passive Investigation', hitPoints: 'Hit Points', max: 'Max',
     damage: 'Damage', heal: 'Heal', temp: 'Temp HP', hitDice: 'Hit Dice', spendHitDie: 'Spend a Hit Die (roll + CON)', deathSaves: 'Death Saves',

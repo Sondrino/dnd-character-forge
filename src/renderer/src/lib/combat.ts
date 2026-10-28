@@ -8,7 +8,7 @@ import { evalFormula, type FormulaContext } from '../engine/formula'
 export const uidc = (): string => Math.random().toString(36).slice(2, 10)
 
 export function freshTurn(): CombatTurn {
-  return { action: false, bonus: false, reaction: false, movement: 0, attacks: 0, slotUsed: false, dashed: false, interaction: false }
+  return { action: false, bonus: false, reaction: false, movement: 0, attacks: 0, slotUsed: false, dashed: false, interaction: false, lightUsed: undefined, offhandDone: false }
 }
 
 export function newCombat(dice: CombatState['dice'], self: Combatant): CombatState {
@@ -231,6 +231,17 @@ export function advanceTurn(c: CombatState): { ownTurn: boolean; newRound: boole
   }
   c.turnIdx = idx
   return { ownTurn: !!order[idx]?.self, newRound }
+}
+
+/**
+ * Ekstra-angrep med Light-våpen (2024): bare etter at du har angrepet med et Light-våpen i Attack-handlingen
+ * denne turen, og med et annet våpen. Returnerer grunnen hvis det ikke er lov.
+ */
+export function offhandBlocked(c: CombatState, attackKey: string): 'noLight' | 'sameWeapon' | 'done' | null {
+  if (c.turn.offhandDone) return 'done'
+  if (!c.turn.lightUsed) return 'noLight'
+  if (c.turn.lightUsed === attackKey) return 'sameWeapon'
+  return null
 }
 
 /** Bevegelse igjen denne turen (Dash gir like mye til) */

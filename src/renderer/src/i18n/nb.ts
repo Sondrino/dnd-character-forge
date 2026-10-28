@@ -28,6 +28,7 @@ export const nb = {
     advantage: 'Advantage', disadvantage: 'Disadvantage', overridden: 'Manuelt satt (beregnet: {{v}})', reset: 'Tilbakestill', edit: 'Endre eller juster verdien'
   },
   sheet: {
+    exhaustionEffect: '−{{d}} på D20 Tests · −{{s}} ft. speed · long rest fjerner 1 nivå', exhaustionDead: 'Exhaustion 6 – karakteren dør.', 
     unarmored: 'Uten rustning', initiative: 'Initiative', speed: 'Speed', passivePerception: 'Passive Perc.', inspiration: 'Inspiration',
     size: 'Størrelse', passiveInsight: 'Passive Insight', passiveInvestigation: 'Passive Investigation', hitPoints: 'Hit Points', max: 'Maks',
     damage: 'Skade', heal: 'Heal', temp: 'Temp HP', hitDice: 'Hit Dice', spendHitDie: 'Bruk en Hit Die (rull + CON)', deathSaves: 'Death Saves',

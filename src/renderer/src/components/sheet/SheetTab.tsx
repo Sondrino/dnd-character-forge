@@ -281,7 +281,7 @@ function AbilityBlock({ a }: { a: Ability }) {
       <div className="flex items-center gap-3">
         <button
           className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl border border-gold/40 bg-gradient-to-b from-panel-3 to-panel-2 transition-colors hover:border-gold"
-          onClick={() => roll(d20(ab.mod), `${abilityNames[a]} check`, { character: char.name })}
+          onClick={() => roll(d20(d.checks[a].value), `${abilityNames[a]} check`, { character: char.name })}
           title={t('sheet.rollCheck')}
         >
           <span className="font-display text-2xl font-bold leading-none">
@@ -620,7 +620,8 @@ function ConditionsSection() {
           </button>
         ))}
       </div>
-      {char.exhaustion > 0 && <div className="mt-1 text-[11px] text-crimson-2">−{2 * char.exhaustion} to D20 Tests · −{5 * char.exhaustion} ft. Speed</div>}
+      {char.exhaustion > 0 && char.exhaustion < 6 && <div className="mt-1 text-[11px] text-crimson-2">{t('sheet.exhaustionEffect', { d: 2 * char.exhaustion, s: 5 * char.exhaustion })}</div>}
+      {char.exhaustion >= 6 && <div className="mt-1 text-[11px] font-semibold text-bad">{t('sheet.exhaustionDead')}</div>}
     </Section>
   )
 }

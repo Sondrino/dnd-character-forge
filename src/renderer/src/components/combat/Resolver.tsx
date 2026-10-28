@@ -8,7 +8,7 @@ import { Markdown, Modal } from '../ui'
 import { EntityLink } from '../EntityInfo'
 import { RollBox } from './RollBox'
 import { classColumn, featureStates, signed, useCombat, type CombatOption, type Economy } from './useCombat'
-import { SPELL_BUFFS, addEffect, addLog, attacksPerAction, castingKind, critDice, dropConcentration, durationRounds, evalAbility, freeCasts, initiativeOrder, resolveDice, spellDamageDice, spellHealDice, spellTempDice, type FreeCast } from '../../lib/combat'
+import { SPELL_BUFFS, addEffect, addLog, attacksPerAction, offhandBlocked, castingKind, critDice, dropConcentration, durationRounds, evalAbility, freeCasts, initiativeOrder, resolveDice, spellDamageDice, spellHealDice, spellTempDice, type FreeCast } from '../../lib/combat'
 
 const ABIL: Record<string, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
 
@@ -223,6 +223,19 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
   const a = chosen
   const per = attacksPerAction(d.features.map((f) => f.name))
   if (!a) return <p className="text-muted">{t('combat.noWeapon')}</p>
+  const blocked = opt.offhand ? offhandBlocked(c, a.key) : null
+  // Nick: ekstra-angrepet er en del av Attack-handlingen i stedet for en bonus action
+  const hasNick = (x?: DerivedAttack): boolean => !!x && x.masteryActive && x.mastery === 'nick'
+  const nick = !!opt.offhand && (hasNick(a) || hasNick(d.attacks.find((x) => x.key === c.turn.lightUsed)))
+  if (blocked)
+    return (
+      <div className="space-y-3">
+        <div className="flex items-start gap-2 rounded-xl border border-crimson/40 bg-crimson/10 px-3 py-2 text-sm text-crimson-2">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {t(`combat.offhandBlocked.${blocked}`)}
+        </div>
+        <p className="text-sm text-muted">{t('combat.offhandRule')}</p>
+      </div>
+    )
   // Off-hand: ingen positiv ability-modifier på skaden uten Two-Weapon Fighting
   const twf = char.feats.some((f) => f.featId === 'two-weapon-fighting')
   const damage = opt.offhand && !twf ? a.damage.replace(/\+\d+$/, '') : a.damage
@@ -249,7 +262,11 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
           </div>
         </>
       )}
-      {opt.offhand && <p className="mb-3 text-sm text-muted">{t(twf ? 'combat.offhandTwf' : 'combat.offhandNote')}</p>}
+      {opt.offhand && (
+        <p className="mb-3 text-sm text-muted">
+          {t(twf ? 'combat.offhandTwf' : 'combat.offhandNote')} {nick && <b className="text-gold">{t('combat.nickNote')}</b>}
+        </p>
+      )}
       <AttackRoll
         key={a.key}
         setup={{ name: a.name, bonus: a.bonus?.value ?? 0, damage, damageType: a.damageType, melee: !ranged, str: usesStr, mastery: a.masteryActive ? a.mastery : undefined }}
@@ -259,6 +276,10 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
             if (opt.via === 'action') {
               cc.turn.action = true
               cc.turn.attacks += 1
+              if (a.properties.includes('light') && !cc.turn.lightUsed) cc.turn.lightUsed = a.key
+            } else if (opt.offhand) {
+              cc.turn.offhandDone = true
+              if (!nick) cc.turn.bonus = true
             } else spend(cc, opt.via)
             const who = hurt(cc, r.target, r.damage)
             if (r.hit) {

@@ -90,6 +90,10 @@ export interface Derived {
   classLabel: string
   pb: Stat
   abilities: Record<Ability, { score: Stat; mod: number }>
+  /** Ability checks uten skill (f.eks. Strength check): mod + check-effekter + Exhaustion */
+  checks: Record<Ability, Stat>
+  /** Exhaustion-nivå 0–6 (6 = død) */
+  exhaustion: number
   saves: Record<Ability, Stat & { proficient: boolean }>
   skills: Record<SkillId, Stat & { proficient: boolean; expertise: boolean; ability: Ability }>
   passive: { perception: Stat; insight: Stat; investigation: Stat }
@@ -337,7 +341,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
       const key = `species:${species.id}:${t.id}`
       features.push({
         key, id: t.id, name: t.name, source: species.name, sourceType: 'species', summary: t.summary, description: t.description,
-        activation: t.activation, uses: undefined
+        activation: t.activation, uses: undefined, roll: t.roll, toggle: t.toggle, duration: t.duration
       })
       addEffects(t.effects, `${species.name}: ${t.name}`)
       featureChoices.push({ feature: t, source: `${species.name}: ${t.name}`, keyBase: `species:${species.id}:${t.id}`, area: 'species' })
@@ -690,6 +694,19 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     saves[a] = s
   }
 
+  /* ---------- Ability checks ---------- */
+  const checks = {} as Derived['checks']
+  for (const a of ABILITIES) {
+    const bd = [`${abilityNamesShort[a]} mod: ${signed(mods[a])}`]
+    let v = mods[a]
+    v += sumAdd([`check.${a}`, 'check.all'], bd)
+    v += exhaustionPenalty(bd)
+    const s = stat(v, bd)
+    s.advantage = [...eff(`check.${a}`, 'advantage'), ...eff('check.all', 'advantage')].map((e) => e.effect.note ?? e.source)
+    applyOverride(s, `check.${a}`)
+    checks[a] = s
+  }
+
   /* ---------- Skills ---------- */
   const skillsOut = {} as Derived['skills']
   for (const sk of SKILLS) {
@@ -822,10 +839,15 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
   const speedStat: Derived['speed'] = stat(Math.max(0, speed), spBd)
   for (const m of ['fly', 'swim', 'climb', 'burrow'] as const) {
     let v = 0
+    let fromSpeed = false
     for (const e of eff(`speed.${m}`)) {
-      const n = String(e.effect.value).toLowerCase() === 'speed' ? speed : Number(e.effect.value)
+      const isSpeed = String(e.effect.value).toLowerCase() === 'speed'
+      fromSpeed ||= isSpeed
+      const n = isSpeed ? speed : Number(e.effect.value)
       v = e.effect.op === 'add' ? v + n : Math.max(v, n)
     }
+    // Exhaustion senker alle bevegelsestyper (lik Speed er allerede redusert)
+    if (v && exhaustionLevel && !fromSpeed) v = Math.max(0, v - 5 * exhaustionLevel)
     if (v) speedStat[m] = v
   }
   applyOverride(speedStat, 'speed')
@@ -1057,7 +1079,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
   const SIZE_STEPS = ['tiny', 'medium', 'large', 'huge', 'gargantuan']
   const found = SIZE_STEPS.findIndex((x) => size.toLowerCase().includes(x))
   const sizeIdx = found === -1 ? 1 : found // Small og ukjent = Medium
-  const effIdx = Math.min(SIZE_STEPS.length - 1, sizeIdx + (hasFeature(/powerful build/i) ? 1 : 0))
+  const effIdx = Math.min(SIZE_STEPS.length - 1, sizeIdx + (hasFeature(/powerful build|equine build/i) ? 1 : 0))
   const sizeMult = [0.5, 1, 2, 4, 8][effIdx]
   const capacity = abilities.str.score.value * 15 * sizeMult
 
@@ -1069,6 +1091,8 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     classLabel,
     pb,
     abilities,
+    checks,
+    exhaustion: exhaustionLevel,
     saves,
     skills: skillsOut,
     passive: { perception: passive('perception', 'passive.perception'), insight: passive('insight'), investigation: passive('investigation') },

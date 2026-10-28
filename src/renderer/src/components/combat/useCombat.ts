@@ -61,9 +61,14 @@ export function combatOptions(char: Character, d: Derived, L: Lookup): OptionGro
   const g: OptionGroups = { action: [], bonus: [], reaction: [], other: [], attacksPerAction: attacksPerAction(d.features.map((f) => f.name)) }
   // Våpen og Unarmed Strike i Attack-handlingen
   for (const a of d.attacks.filter((x) => x.kind !== 'spell')) g.action.push({ kind: 'attack', key: `atk:${a.key}`, attack: a, via: 'action' })
-  // Off-hand: to Light-våpen gir et bonusangrep (Two-Weapon Fighting)
-  const light = d.attacks.filter((a) => a.kind === 'weapon' && a.properties.includes('light'))
-  if (light.length >= 2) for (const a of light) g.bonus.push({ kind: 'attack', key: `off:${a.key}`, attack: a, via: 'bonus', offhand: true })
+  // Ekstra-angrep (Light): etter et angrep med et Light-våpen i Attack-handlingen, med et annet Light-våpen.
+  // Dual Wielder: det andre våpenet kan være et hvilket som helst nærkampvåpen uten Two-Handed.
+  const weapons = d.attacks.filter((a) => a.kind === 'weapon')
+  const light = weapons.filter((a) => a.properties.includes('light'))
+  const dualWielder = char.feats.some((f) => f.featId === 'dual-wielder')
+  const isMelee = (a: (typeof weapons)[number]): boolean => (L.get('weapon', a.refId ?? '') as { weaponType?: string } | undefined)?.weaponType !== 'ranged'
+  const second = dualWielder ? weapons.filter((a) => isMelee(a) && !a.properties.includes('two-handed')) : light
+  if (light.length && second.length >= 2) for (const a of second) g.bonus.push({ kind: 'attack', key: `off:${a.key}`, attack: a, via: 'bonus', offhand: true })
   // Spells
   const seen = new Set<string>()
   for (const cs of char.spells) {

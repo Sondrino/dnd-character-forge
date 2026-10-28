@@ -13,7 +13,7 @@ import { RollBox } from '../components/combat/RollBox'
 import { Resolver } from '../components/combat/Resolver'
 import { InitiativePanel, LogPanel, StatsPanel, StatusPanel, VitalsPanel } from '../components/combat/Panels'
 import { combatOptions, signed, useCombat, type CombatOption } from '../components/combat/useCombat'
-import { addLog, advanceTurn, castingKind, endEffects, freeCasts, initiativeOrder, movementLeft, newCombat, startOwnTurn } from '../lib/combat'
+import { addLog, advanceTurn, castingKind, endEffects, freeCasts, initiativeOrder, movementLeft, newCombat, offhandBlocked, startOwnTurn } from '../lib/combat'
 
 export default function CombatPage() {
   const { id } = useParams()
@@ -294,7 +294,9 @@ function Hints({ groups }: { groups: ReturnType<typeof combatOptions> }) {
   if (char.hp.current <= 0) hints.push({ tone: 'bad', text: char.deathSaves.failures >= 3 ? t('combat.hint.dead') : char.deathSaves.successes >= 3 ? t('combat.hint.stable') : t('combat.hint.dying') })
   else {
     if (!c.turn.action) hints.push({ tone: 'good', text: t('combat.hint.action', { n: groups.attacksPerAction, list: names(groups.action) }) })
-    const bonusOpts = groups.bonus.filter((o) => o.kind !== 'feature' || !o.feature.uses || o.feature.uses.used < o.feature.uses.max)
+    const bonusOpts = groups.bonus.filter(
+      (o) => (o.kind !== 'feature' || !o.feature.uses || o.feature.uses.used < o.feature.uses.max) && !(o.kind === 'attack' && o.offhand && o.attack && offhandBlocked(c, o.attack.key))
+    )
     if (!c.turn.bonus && bonusOpts.length) hints.push({ tone: 'good', text: t('combat.hint.bonus', { list: names(bonusOpts) }) })
     if (!c.turn.bonus && !bonusOpts.length) hints.push({ tone: 'info', text: t('combat.hint.noBonus') })
     if (!c.turn.reaction) hints.push({ tone: 'info', text: t('combat.hint.reaction', { list: names(groups.reaction, 3) }) })
@@ -310,6 +312,8 @@ function Hints({ groups }: { groups: ReturnType<typeof combatOptions> }) {
     }
     if (frees.length && char.hp.current > 0) hints.push({ tone: 'good', text: t('combat.hint.free', { list: frees.join(', ') }) })
   }
+  if (c.turn.lightUsed && !c.turn.offhandDone && char.hp.current > 0) hints.push({ tone: 'good', text: t('combat.hint.offhand') })
+  if (char.exhaustion > 0) hints.push({ tone: 'bad', text: char.exhaustion >= 6 ? t('combat.hint.exhaustionDead') : t('combat.hint.exhaustion', { n: char.exhaustion, d: 2 * char.exhaustion, s: 5 * char.exhaustion }) })
   if (c.concentration) hints.push({ tone: 'info', text: t('combat.hint.conc', { name: c.concentration.name }) })
   if (char.activeStates.includes('raging')) hints.push({ tone: 'info', text: t('combat.hint.rage') })
   for (const id of char.conditions) {
@@ -383,15 +387,22 @@ function OptionList({ title, icon, opts, used, onPick, groups }: { title: string
 
 function OptionCard({ o, onPick }: { o: CombatOption; onPick: (o: CombatOption) => void }) {
   const { t } = useTranslation()
-  const { char, derived: d, lookup: L } = useCombat()
+  const { char, derived: d, lookup: L, c } = useCombat()
   let name = ''
   let sub = ''
   let badge: React.ReactNode = null
   let disabled = false
   if (o.kind === 'attack') {
     name = o.attack?.name ?? t('combat.opportunity')
-    sub = o.attack ? `${o.attack.bonus ? signed(o.attack.bonus.value) : ''} · ${o.attack.damage} ${o.attack.damageType} · ${o.attack.range}` : t('combat.opportunityTip')
-    if (o.offhand) badge = <span className="chip text-[10px]">{t('combat.offhand')}</span>
+    // Off-hand uten Two-Weapon Fighting: ingen positiv modifier på skaden
+    const dmg = o.attack && o.offhand && !char.feats.some((f) => f.featId === 'two-weapon-fighting') ? o.attack.damage.replace(/\+\d+$/, '') : o.attack?.damage
+    sub = o.attack ? `${o.attack.bonus ? signed(o.attack.bonus.value) : ''} · ${dmg} ${o.attack.damageType} · ${o.attack.range}` : t('combat.opportunityTip')
+    if (o.offhand) {
+      const bl = o.attack ? offhandBlocked(c, o.attack.key) : 'noLight'
+      disabled = !!bl
+      badge = <span className={`chip text-[10px] ${bl ? 'text-faint' : 'border-good/60 text-good'}`} title={bl ? t(`combat.offhandBlocked.${bl}`) : ''}>{t('combat.offhand')}</span>
+      if (bl) sub = t(`combat.offhandBlocked.${bl}`)
+    }
     else if (o.attack?.masteryActive) badge = <span className="chip border-gold/50 text-[10px] text-gold">{o.attack.mastery}</span>
   } else if (o.kind === 'spell') {
     const sp: SpellDef = o.spell

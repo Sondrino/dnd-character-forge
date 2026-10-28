@@ -177,7 +177,7 @@ function DeathSaves() {
       ) : (
         <>
           <p className="mb-2 text-xs text-muted">{t('combat.deathSaveHelp')}</p>
-          <RollBox label={t('combat.deathSave')} notation="1d20" value={v} onValue={(x) => (setV(x), x !== null && !physical && apply(x))} physical={physical} character={char.name} />
+          <RollBox label={t('combat.deathSave')} notation={d.exhaustion ? `1d20-${2 * d.exhaustion}` : '1d20'} hint={d.exhaustion ? t('combat.exhaustionOnSave', { n: 2 * d.exhaustion }) : undefined} value={v} onValue={(x) => (setV(x), x !== null && !physical && apply(x))} physical={physical} character={char.name} />
           {physical && (
             <div className="mt-2 flex justify-end">
               <button className="btn btn-primary btn-sm" disabled={v === null} onClick={() => v !== null && apply(v)}>
@@ -395,7 +395,8 @@ export function StatusPanel() {
       <div className="mt-2 flex items-center gap-2 text-sm">
         <span>Exhaustion</span>
         <NumberInput value={char.exhaustion} onChange={(v) => update((ch) => void (ch.exhaustion = v))} min={0} max={6} width={52} />
-        {char.exhaustion > 0 && <span className="text-xs text-crimson-2">−{2 * char.exhaustion} d20 · −{5 * char.exhaustion} ft.</span>}
+        {char.exhaustion > 0 && char.exhaustion < 6 && <span className="text-xs text-crimson-2">−{2 * char.exhaustion} d20 · −{5 * char.exhaustion} ft.</span>}
+        {char.exhaustion >= 6 && <span className="text-xs font-semibold text-bad">{t('combat.hint.exhaustionDead')}</span>}
       </div>
       {active.length > 0 && (
         <div className="mt-2 space-y-1">

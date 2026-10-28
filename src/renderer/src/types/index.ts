@@ -517,6 +517,10 @@ export interface CombatTurn {
   slotUsed: boolean
   dashed: boolean
   interaction: boolean
+  /** Light-våpenet (angreps-nøkkel) du angrep med i Attack-handlingen – åpner for ekstra-angrep med et annet våpen */
+  lightUsed?: string
+  /** Ekstra-angrepet (Light/Nick/Dual Wielder) er brukt denne turen */
+  offhandDone?: boolean
 }
 
 /** Pågående kamp – lagres på karakteren så den overlever omstart */

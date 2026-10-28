@@ -57,6 +57,9 @@ export const combatNb = {
     rage: 'Rage: ekstra skade på STR-angrep, resistance mot bludgeoning/piercing/slashing, advantage på STR-checks og -saves. Hold den gående ved å angripe, tvinge en save eller bruke en bonus action.',
     dying: 'Du er på 0 HP og bevisstløs: slå en death save i starten av turen din.', stable: 'Du er stabil. En alliert kan helbrede deg.', dead: 'Karakteren er død.',
     free: 'Gratis-kast tilgjengelig: {{list}}.',
+    offhand: 'Du har angrepet med et Light-våpen: du kan gjøre ett ekstra angrep med et annet Light-våpen (bonus action, eller gratis med Nick).',
+    exhaustion: 'Exhaustion {{n}}: −{{d}} på alle D20 Tests (angrep, ability checks, saves, initiativ og death saves) og −{{s}} ft. speed. Long rest fjerner 1 nivå.',
+    exhaustionDead: 'Exhaustion 6 – karakteren dør.',
     low: 'Lav HP! Vurder Disengage, Dodge eller å trekke deg ut av rekkevidde.', lowHeal: 'Lav HP! Du kan bruke {{name}} for å helbrede deg.'
   },
   stdActions: 'Standardhandlinger', std: STD_NB,
@@ -81,6 +84,13 @@ export const combatNb = {
   castTime: 'Casting time', range: 'Range', duration: 'Varighet', level: 'Nivå', chooseSlot: 'Spell slot', noSlotsLeft: 'Ingen ledige slots på dette nivået eller høyere.',
   fullText: 'Full beskrivelse', cast: 'Kast spell',
   targetsSave: 'Målene slår', halfOnSave: 'Halv skade ved vellykket save (sjekk spellet)', noneOnSave: 'Ingen skade ved vellykket save',
+  offhandBlocked: {
+    noLight: 'Krever at du først har angrepet med et Light-våpen i Attack-handlingen denne turen.',
+    sameWeapon: 'Ekstra-angrepet må gjøres med et annet våpen enn det du angrep med.',
+    done: 'Du har allerede gjort ekstra-angrepet denne turen.'
+  },
+  offhandRule: 'Light (2024): når du tar Attack-handlingen og angriper med et Light-våpen, kan du gjøre ett ekstra angrep som bonus action senere samme tur med et annet Light-våpen. Med Nick-mastery er ekstra-angrepet en del av Attack-handlingen. Med Dual Wielder kan det andre våpenet være et hvilket som helst nærkampvåpen uten Two-Handed.',
+  nickNote: 'Nick: dette bruker ikke bonus action.', exhaustionOnSave: 'Exhaustion: −{{n}} på death save',
   autoHit: 'Spellet treffer automatisk – rull skaden og velg mål.', savesAdv: '* = advantage i noen situasjoner (hold over for detaljer).',
   freeCast: 'Gratis: {{name}} ({{left}})', atWill: 'ubegrenset', freeBadge: 'Gratis',
   freeOffer: 'Du kan kaste {{spell}} gratis med {{name}} – det er valgt nedenfor.', freeUsedUp: 'Gratis-kastet ({{name}}) er brukt opp – fornyes ved long rest.',
@@ -161,6 +171,9 @@ export const combatEn: typeof combatNb = {
     rage: 'Rage: extra damage on STR attacks, resistance to bludgeoning/piercing/slashing, advantage on STR checks and saves. Keep it going by attacking, forcing a save or using a bonus action.',
     dying: 'You are at 0 HP and unconscious: make a death save at the start of your turn.', stable: 'You are stable. An ally can heal you.', dead: 'The character is dead.',
     free: 'Free casts available: {{list}}.',
+    offhand: 'You attacked with a Light weapon: you can make one extra attack with a different Light weapon (bonus action, or free with Nick).',
+    exhaustion: 'Exhaustion {{n}}: −{{d}} to all D20 Tests (attacks, ability checks, saves, initiative and death saves) and −{{s}} ft. Speed. A long rest removes 1 level.',
+    exhaustionDead: 'Exhaustion 6 – the character dies.',
     low: 'Low HP! Consider Disengage, Dodge or getting out of reach.', lowHeal: 'Low HP! You can use {{name}} to heal yourself.'
   },
   stdActions: 'Standard actions', std: STD_EN,
@@ -185,6 +198,13 @@ export const combatEn: typeof combatNb = {
   castTime: 'Casting time', range: 'Range', duration: 'Duration', level: 'Level', chooseSlot: 'Spell slot', noSlotsLeft: 'No slots left at this level or higher.',
   fullText: 'Full description', cast: 'Cast spell',
   targetsSave: 'Targets make a', halfOnSave: 'Half damage on a successful save (check the spell)', noneOnSave: 'No damage on a successful save',
+  offhandBlocked: {
+    noLight: 'You must first attack with a Light weapon as part of the Attack action this turn.',
+    sameWeapon: 'The extra attack must be made with a different weapon than the one you attacked with.',
+    done: 'You have already made the extra attack this turn.'
+  },
+  offhandRule: 'Light (2024): when you take the Attack action and attack with a Light weapon, you can make one extra attack as a Bonus Action later on the same turn with a different Light weapon. With the Nick mastery the extra attack is part of the Attack action. With Dual Wielder the second weapon can be any melee weapon without Two-Handed.',
+  nickNote: 'Nick: this does not use your bonus action.', exhaustionOnSave: 'Exhaustion: −{{n}} to the death save',
   autoHit: 'The spell hits automatically – roll the damage and pick targets.', savesAdv: '* = advantage in some situations (hover for details).',
   freeCast: 'Free: {{name}} ({{left}})', atWill: 'at will', freeBadge: 'Free',
   freeOffer: 'You can cast {{spell}} for free with {{name}} – it is selected below.', freeUsedUp: 'The free cast ({{name}}) is used up – it returns on a long rest.',

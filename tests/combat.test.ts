@@ -201,3 +201,39 @@ describe('free casts', () => {
     expect(f[0]).toMatchObject({ useKey: 'free:species:hellish-rebuke', left: 1 })
   })
 })
+
+import { offhandBlocked } from '../src/renderer/src/lib/combat'
+
+describe('Light weapon extra attack (2024)', () => {
+  it('is only allowed after attacking with a Light weapon in the Attack action, with a different weapon, once', () => {
+    const c = newCombat('app', { uid: 'me', name: 'Hero', init: 10, self: true })
+    expect(offhandBlocked(c, 'shortsword')).toBe('noLight')
+    c.turn.lightUsed = 'dagger'
+    expect(offhandBlocked(c, 'dagger')).toBe('sameWeapon')
+    expect(offhandBlocked(c, 'shortsword')).toBeNull()
+    c.turn.offhandDone = true
+    expect(offhandBlocked(c, 'shortsword')).toBe('done')
+    startOwnTurn(c, newCharacter())
+    expect(offhandBlocked(c, 'shortsword')).toBe('noLight')
+  })
+})
+
+describe('Exhaustion (2024)', () => {
+  it('applies −2 per level to every D20 Test and −5 ft. per level to all speeds', () => {
+    const ch = newCharacter({ classes: [{ classId: 'fighter', level: 1, hpRolls: [] }], speciesId: 'human', backgroundId: 'soldier', baseAbilities: { str: 14, dex: 14, con: 14, int: 10, wis: 10, cha: 10 } })
+    const a = computeCharacter(ch, baseLookup)
+    ch.exhaustion = 2
+    const b = computeCharacter(ch, baseLookup)
+    expect(b.checks.str.value).toBe(a.checks.str.value - 4)
+    expect(b.saves.con.value).toBe(a.saves.con.value - 4)
+    expect(b.skills.athletics.value).toBe(a.skills.athletics.value - 4)
+    expect(b.initiative.value).toBe(a.initiative.value - 4)
+    expect(b.attacks[0].bonus!.value).toBe(a.attacks[0].bonus!.value - 4)
+    expect(b.speed.value).toBe(a.speed.value - 10)
+    // Passive scores er ikke D20 Tests
+    expect(b.passive.perception.value).toBe(a.passive.perception.value)
+    expect(b.exhaustion).toBe(2)
+    ch.customEffects.push({ uid: 'fly', label: 'Fly 60', active: true, target: 'speed.fly', op: 'set', value: 60 })
+    expect(computeCharacter(ch, baseLookup).speed.fly).toBe(50)
+  })
+})
