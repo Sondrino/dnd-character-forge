@@ -1,6 +1,7 @@
 import type { Character, CombatEffect, CombatState, CombatTurn, Combatant, Effect, FeatDef, SpellDef } from '../types'
 import type { Derived } from '../engine/compute'
 import type { Lookup } from '../engine/lookup'
+import { evalFormula, type FormulaContext } from '../engine/formula'
 
 /** Ren kamplogikk (ingen React) – brukt av kampmodus og testet i tests/combat.test.ts */
 
@@ -377,4 +378,45 @@ export function featureGrantedSpells(d: Derived): string[] {
 export function addLog(c: CombatState, kind: CombatState['log'][number]['kind'], text: string): void {
   c.log.unshift({ uid: uidc(), round: c.round, kind, text })
   if (c.log.length > 300) c.log.length = 300
+}
+
+/* ------------------------------------------------------------------ */
+/* Formler i egne evner                                                */
+/* ------------------------------------------------------------------ */
+
+/** Formel-kontekst fra en beregnet karakter */
+export function formulaCtx(d: Derived): FormulaContext {
+  const mods = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } as FormulaContext['mods']
+  for (const ab of Object.keys(mods) as (keyof typeof mods)[]) mods[ab] = d.abilities[ab].mod
+  return { mods, pb: d.pb.value, level: d.totalLevel, totalLevel: d.totalLevel }
+}
+
+/** Regn ut en tallformel (f.eks. '8+prof+mod.con'); null hvis ugyldig */
+export function evalAbility(expr: string | undefined, d: Derived): number | null {
+  return evalFormula(expr?.trim() || undefined, formulaCtx(d))
+}
+
+/** Terninger med formler: '2d6+mod.cha' → '2d6+3', '1d8+level' → '1d8+5' */
+export function resolveDice(dice: string, d: Derived): string {
+  const ctx = formulaCtx(d)
+  const num = (n: number): string => `(${n})`
+  let s = dice.toLowerCase().replace(/\s+/g, '')
+  s = s.replace(/mod\.(str|dex|con|int|wis|cha)/g, (_m, a: keyof FormulaContext['mods']) => num(ctx.mods[a]))
+  s = s.replace(/\b(proficiency|prof|pb)\b/g, num(ctx.pb))
+  s = s.replace(/\b(totallevel|level)\b/g, num(ctx.level))
+  // Fjern parenteser rundt tall og rydd fortegn: «+(-1)» → «-1»
+  s = s.replace(/\(([+-]?\d+)\)/g, '$1').replace(/\+-/g, '-').replace(/--/g, '+').replace(/\+\+/g, '+')
+  // Slå sammen konstanter: «2d6+3+2» → «2d6+5»
+  const parts = s.match(/[+-]?[^+-]+/g) ?? []
+  const dicePart: string[] = []
+  let k = 0
+  for (const p of parts) {
+    const sign = p.startsWith('-') ? -1 : 1
+    const body = p.replace(/^[+-]/, '').replace(/[()]/g, '')
+    if (/^\d*d\d+$/.test(body)) dicePart.push(`${sign < 0 ? '-' : dicePart.length ? '+' : ''}${body}`)
+    else if (/^-?\d+$/.test(body)) k += sign * Number(body)
+    else return dice
+  }
+  const out = dicePart.join('') + (k ? (k > 0 ? (dicePart.length ? `+${k}` : `${k}`) : `${k}`) : '')
+  return out || '0'
 }

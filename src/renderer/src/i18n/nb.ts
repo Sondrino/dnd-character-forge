@@ -1,4 +1,5 @@
 import { combatNb } from './combat'
+import { abilityNb } from './ability'
 
 export const nb = {
   nav: { characters: 'Karakterer', compendium: 'Oppslag', homebrew: 'Homebrew', settings: 'Innstillinger', dice: 'Terninger' },
@@ -184,5 +185,6 @@ export const nb = {
     masteryCount: 'Antall Weapon Mastery', spellcasting: 'Spellcasting', slots: 'Spell slots nivå {{n}}', attacks: 'Angrep', attackBonus: 'angrepsbonus', damageBonus: 'skadebonus',
     auto: 'Auto', adjustment: 'Justering', fixed: 'Fast', result: 'Resultat'
   },
-  combat: combatNb
+  combat: combatNb,
+  ability: abilityNb
 }

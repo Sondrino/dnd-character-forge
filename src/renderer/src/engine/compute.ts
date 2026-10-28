@@ -32,6 +32,9 @@ export interface DerivedFeature {
   description: string
   activation?: Feature['activation']
   uses?: { max: number; used: number; recharge: Uses['recharge'] }
+  roll?: Feature['roll']
+  toggle?: string
+  duration?: number
   entityKind?: string
   entityId?: string
 }
@@ -277,7 +280,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
       const key = `class:${def.id}:${f.id}`
       features.push({
         key, id: f.id, name: f.name, source: `${def.name} ${f.level ?? 1}`, sourceType: 'class', level: f.level,
-        summary: f.summary, description: f.description, activation: f.activation,
+        summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, duration: f.duration,
         uses: undefined
       })
       addEffects(f.effects, `${def.name}: ${f.name}`, ce.level)
@@ -289,7 +292,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
         const key = `subclass:${sub.id}:${f.id}`
         features.push({
           key, id: f.id, name: f.name, source: `${sub.name} ${f.level ?? def.subclassLevel}`, sourceType: 'subclass', level: f.level,
-          summary: f.summary, description: f.description, activation: f.activation,
+          summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, duration: f.duration,
           uses: undefined
         })
         addEffects(f.effects, `${sub.name}: ${f.name}`, ce.level)
@@ -448,7 +451,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
   // Custom features
   for (const f of char.customFeatures ?? []) {
     const key = `custom:${f.id}`
-    features.push({ key, id: f.id, name: f.name, source: 'Custom', sourceType: 'custom', summary: f.summary, description: f.description, activation: f.activation })
+    features.push({ key, id: f.id, name: f.name, source: 'Custom', sourceType: 'custom', summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, toggle: f.toggle, duration: f.duration })
     addEffects(f.effects, f.name)
   }
 

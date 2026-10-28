@@ -8,7 +8,7 @@ import { Markdown, Modal } from '../ui'
 import { EntityLink } from '../EntityInfo'
 import { RollBox } from './RollBox'
 import { classColumn, featureStates, signed, useCombat, type CombatOption, type Economy } from './useCombat'
-import { SPELL_BUFFS, addEffect, addLog, attacksPerAction, castingKind, critDice, dropConcentration, durationRounds, freeCasts, initiativeOrder, spellDamageDice, spellHealDice, spellTempDice, type FreeCast } from '../../lib/combat'
+import { SPELL_BUFFS, addEffect, addLog, attacksPerAction, castingKind, critDice, dropConcentration, durationRounds, evalAbility, freeCasts, initiativeOrder, resolveDice, spellDamageDice, spellHealDice, spellTempDice, type FreeCast } from '../../lib/combat'
 
 const ABIL: Record<string, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
 
@@ -645,7 +645,8 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
   const left = f.uses ? f.uses.max - f.uses.used : undefined
   const pool = !!f.uses && f.uses.max > 12
   const [spendN, setSpendN] = useState(1)
-  const states = featureStates(d, f)
+  const states = [...new Set([...featureStates(d, f), ...(f.toggle ? [f.toggle] : [])])]
+  const [phase, setPhase] = useState<'use' | 'roll'>('use')
   const fighterLvl = char.classes.find((x) => x.classId === 'fighter')?.level ?? 0
   const heal = /second wind/i.test(f.name) ? `1d10+${fighterLvl}` : undefined
   const [healAmt, setHealAmt] = useState<number | null>(null)
@@ -657,8 +658,9 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
   const mentionsHeal = !heal && !poolHeal && /regains? .{0,60}hit points|restore .{0,40}hit points/i.test(text)
   const [extraTemp, setExtraTemp] = useState('')
   const [extraHeal, setExtraHeal] = useState('')
-  const rounds = isRage ? 100 : states.length ? 10 : undefined
+  const rounds = f.duration ?? (isRage ? 100 : states.length ? 10 : undefined)
 
+  if (phase === 'roll' && f.roll) return <FeatureRollStep f={f} onDone={onDone} />
   return (
     <div className="space-y-3">
       <EconomyWarning e={econ} />
@@ -717,7 +719,8 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
               cc.stats.healed += healed
               addLog(cc, 'feature', `${f.name}${pool ? ` (${spendN})` : ''}${rolled ? ` – +${healed} HP` : ''}${tempGain ? ` – ${tempGain} temp HP` : ''}`)
             })
-            onDone()
+            if (f.roll) setPhase('roll')
+            else onDone()
           }}
         >
           <Sparkles size={14} /> {t('combat.use')}
@@ -725,6 +728,46 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
       </div>
     </div>
   )
+}
+
+/** Egne evner: angrep, save, skade, healing eller temp HP etter at evnen er brukt */
+function FeatureRollStep({ f, onDone }: { f: Extract<CombatOption, { kind: 'feature' }>['feature']; onDone: () => void }) {
+  const { t } = useTranslation()
+  const { derived: d, mut } = useCombat()
+  const r = f.roll!
+  const dice = r.dice ? resolveDice(r.dice, d) : undefined
+  // Gjenbruk spell-stegene med et «pseudo-spell» bygget fra evnen
+  const pseudo: SpellDef = {
+    id: f.id, name: f.name, kind: 'spell', source: 'Homebrew', summary: f.summary, description: f.description,
+    level: r.halfOnSave === false ? 0 : 1, school: 'Evocation', castingTime: '', range: r.range ?? (r.kind === 'heal' || r.kind === 'temp' ? 'Touch' : ''),
+    components: { v: false, s: false }, duration: '', concentration: false, ritual: false, classes: [],
+    save: r.kind === 'save' ? (r.save ?? 'dex') : undefined,
+    damage: dice && (r.kind === 'save' || r.kind === 'damage') ? { dice, type: r.damageType ?? '' } : undefined,
+    heal: r.kind === 'heal' ? dice : undefined,
+    tempHp: r.kind === 'temp' ? dice : undefined
+  }
+  if (r.kind === 'attack')
+    return (
+      <AttackRoll
+        setup={{ name: f.name, bonus: evalAbility(r.attack || 'prof', d) ?? 0, damage: dice, damageType: r.damageType, melee: r.melee !== false, str: false }}
+        finishLabel={t('combat.finishAttack')}
+        onFinish={(res) => {
+          mut((cc) => {
+            const who = hurt(cc, res.target, res.damage)
+            if (res.hit) {
+              cc.stats.hits += 1
+              cc.stats.dealt += res.damage
+              if (res.crit) cc.stats.crits += 1
+            } else cc.stats.misses += 1
+            addLog(cc, 'attack', `${f.name}: ${res.hit ? (res.crit ? t('combat.log.crit') : t('combat.log.hit')) : t('combat.log.miss')}${who ? ` ${who}` : ''}${res.hit ? ` – ${res.damage} ${r.damageType ?? ''}` : ''}`)
+          })
+          onDone()
+        }}
+      />
+    )
+  if (r.kind === 'save' || r.kind === 'damage') return <SaveSpell sp={pseudo} dc={evalAbility(r.dc || '8+prof', d) ?? 10} dice={dice} onDone={onDone} />
+  if (r.kind === 'heal') return <HealSpell sp={pseudo} dice={dice} onDone={onDone} />
+  return <TempSpell sp={pseudo} dice={dice} onDone={onDone} />
 }
 
 /* ------------------------------------------------------------------ */

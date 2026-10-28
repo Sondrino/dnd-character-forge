@@ -112,6 +112,23 @@ export interface BaseEntity {
   license?: string
 }
 
+/** Hva en (egen) evne gjør i kampmodus: angrep, save, skade, healing eller temp HP */
+export interface FeatureRoll {
+  kind: 'attack' | 'save' | 'damage' | 'heal' | 'temp'
+  /** Angrepsbonus som formel, f.eks. 'prof+mod.str' */
+  attack?: string
+  /** Save DC som formel, f.eks. '8+prof+mod.con' */
+  dc?: string
+  save?: Ability
+  /** Terninger, kan inneholde formler: '2d6+mod.cha', '1d8+level' */
+  dice?: string
+  damageType?: string
+  /** Halv skade ved vellykket save (standard: ja) */
+  halfOnSave?: boolean
+  melee?: boolean
+  range?: string
+}
+
 export interface Feature {
   id: string
   name: string
@@ -123,6 +140,12 @@ export interface Feature {
   uses?: Uses
   /** Vises som handling på sheetet */
   activation?: 'action' | 'bonus' | 'reaction' | 'passive' | 'special'
+  /** Kampmodus: hva evnen ruller/gjør når den brukes */
+  roll?: FeatureRoll
+  /** Navn på aktiv tilstand: effects gjelder bare mens evnen er slått på */
+  toggle?: string
+  /** Varighet i runder når den slås på i kamp */
+  duration?: number
 }
 
 export type ArmorCategory = 'light' | 'medium' | 'heavy' | 'shield'

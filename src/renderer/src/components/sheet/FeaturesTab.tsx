@@ -3,13 +3,13 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, Plus, Trash2, Star, ExternalLink } from 'lucide-react'
 import { useChar } from './context'
-import { Markdown, Modal, Section } from '../ui'
+import { SpecialAbilityEditor } from './SpecialAbilityEditor'
+import { Markdown, Section } from '../ui'
 import { UsesTracker } from './SheetTab'
 import { FeatSlot } from './ChoiceResolver'
 import { ChoicesPanel } from './ChoicesPanel'
 import type { DerivedFeature } from '../../engine/compute'
-import type { Feature, Uses } from '../../types'
-import { uid } from '../../store/characters'
+import type { Uses } from '../../types'
 import { openDndBeyond } from '../EntityInfo'
 
 export function FeaturesTab() {
@@ -75,7 +75,7 @@ export function FeaturesTab() {
           <p className="text-xs text-muted">{t('features.customHint')}</p>
         </Section>
       </div>
-      <CustomFeatureModal open={adding} onClose={() => setAdding(false)} onSave={(f) => update((c) => void c.customFeatures.push(f))} />
+      <SpecialAbilityEditor open={adding} onClose={() => setAdding(false)} initial={null} />
     </div>
   )
 }
@@ -127,85 +127,4 @@ function FeatureCard({ f }: { f: DerivedFeature }) {
 
 export function rechargeLabel(r: Uses['recharge']): string {
   return { short: 'Short Rest', long: 'Long Rest', turn: 'Turn', dawn: 'Dawn', shortOrLong: 'Short/Long Rest' }[r] ?? r
-}
-
-function CustomFeatureModal({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (f: Feature) => void }) {
-  const { t } = useTranslation()
-  const [name, setName] = useState('')
-  const [desc, setDesc] = useState('')
-  const [uses, setUses] = useState('')
-  const [recharge, setRecharge] = useState<Uses['recharge']>('long')
-  const [activation, setActivation] = useState<Feature['activation']>('passive')
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={t('features.addCustom')}
-      width={560}
-      footer={
-        <>
-          <button className="btn" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            className="btn btn-primary"
-            disabled={!name.trim()}
-            onClick={() => {
-              onSave({
-                id: uid(),
-                name: name.trim(),
-                summary: desc.split('\n')[0].slice(0, 160),
-                description: desc,
-                activation,
-                uses: uses ? { count: /^\d+$/.test(uses) ? Number(uses) : uses, recharge } : undefined
-              })
-              setName('')
-              setDesc('')
-              setUses('')
-              onClose()
-            }}
-          >
-            {t('common.save')}
-          </button>
-        </>
-      }
-    >
-      <div className="space-y-3">
-        <div>
-          <label className="label">{t('common.name')}</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-        </div>
-        <div>
-          <label className="label">{t('common.description')}</label>
-          <textarea className="input min-h-28" value={desc} onChange={(e) => setDesc(e.target.value)} />
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="label">{t('features.uses')}</label>
-            <input className="input" placeholder="3, prof, mod.cha" value={uses} onChange={(e) => setUses(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">{t('features.recharge')}</label>
-            <select className="input" value={recharge} onChange={(e) => setRecharge(e.target.value as Uses['recharge'])}>
-              <option value="short">Short Rest</option>
-              <option value="long">Long Rest</option>
-              <option value="shortOrLong">Short or Long Rest</option>
-              <option value="dawn">Dawn</option>
-              <option value="turn">Turn</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">{t('features.activation')}</label>
-            <select className="input" value={activation} onChange={(e) => setActivation(e.target.value as Feature['activation'])}>
-              <option value="passive">Passive</option>
-              <option value="action">Action</option>
-              <option value="bonus">Bonus Action</option>
-              <option value="reaction">Reaction</option>
-              <option value="special">Special</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </Modal>
-  )
 }

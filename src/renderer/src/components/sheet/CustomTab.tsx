@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Pencil, Trash2, Package, Sparkles, Library } from 'lucide-react'
-import type { AnyEntity, Effect } from '../../types'
+import { Plus, Pencil, Trash2, Package, Sparkles, Library, Copy, Zap } from 'lucide-react'
+import type { AnyEntity, Effect, Feature } from '../../types'
 import { useChar } from './context'
 import { Empty, Section, SourceBadge, Toggle } from '../ui'
 import { EntityEditor, KIND_NAMES, EffectsEditor } from '../HomebrewEditor'
@@ -10,11 +10,14 @@ import { uid } from '../../store/characters'
 import { useHomebrew } from '../../store/settings'
 import { EntityPicker } from '../EntityPicker'
 import { useUi } from '../../store/ui'
+import { SpecialAbilityEditor } from './SpecialAbilityEditor'
+import { UsesTracker } from './SheetTab'
 
 export function CustomTab() {
   const { t } = useTranslation()
-  const { char, update } = useChar()
+  const { char, derived: d, update } = useChar()
   const [editing, setEditing] = useState<AnyEntity | null | 'new'>(null)
+  const [ability, setAbility] = useState<Feature | null | 'new'>(null)
   const [fromLib, setFromLib] = useState(false)
   const hb = useHomebrew((s) => s.entities)
   const upsertGlobal = useHomebrew((s) => s.upsert)
@@ -38,6 +41,65 @@ export function CustomTab() {
   return (
     <div className="grid grid-cols-12 gap-4">
       <div className="col-span-12 space-y-4 lg:col-span-7">
+        <Section
+          title={t('ability.title')}
+          actions={
+            <button className="btn btn-primary btn-sm" onClick={() => setAbility('new')}>
+              <Plus size={13} /> {t('ability.create')}
+            </button>
+          }
+        >
+          {char.customFeatures.length === 0 ? (
+            <Empty icon={<Zap size={30} />} title={t('ability.empty')} text={t('ability.emptyText')} />
+          ) : (
+            <div className="divide-y divide-line-soft">
+              {char.customFeatures.map((f) => {
+                const df = d.features.find((x) => x.key === `custom:${f.id}`)
+                const on = !!f.toggle && char.activeStates.includes(f.toggle)
+                return (
+                  <div key={f.id} className="flex flex-wrap items-center gap-2 py-2">
+                    <Zap size={14} className="text-gold" />
+                    <span className="font-display text-[15px] text-gold">{f.name}</span>
+                    {f.activation && f.activation !== 'passive' && <span className="chip py-0 text-[10px]">{t(`ability.act.${f.activation}`)}</span>}
+                    {f.roll && <span className="chip border-arcane/50 py-0 text-[10px] text-arcane">{t(`ability.kind.${f.roll.kind}`)}</span>}
+                    {f.effects?.length ? <span className="chip py-0 text-[10px]">{t('ability.nEffects', { n: f.effects.length })}</span> : null}
+                    <span className="min-w-0 flex-1 truncate text-xs text-muted">{f.summary}</span>
+                    {df && <UsesTracker f={df} />}
+                    {f.toggle && (
+                      <Toggle
+                        checked={on}
+                        onChange={(v) => update((c) => void (c.activeStates = v ? [...c.activeStates.filter((s) => s !== f.toggle), f.toggle!] : c.activeStates.filter((s) => s !== f.toggle)))}
+                        label={<span className="text-xs">{on ? t('ability.on') : t('ability.off')}</span>}
+                      />
+                    )}
+                    <button className="btn btn-ghost btn-sm" onClick={() => setAbility(f)} title={t('ability.edit')}>
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      title={t('ability.duplicate')}
+                      onClick={() => update((c) => void c.customFeatures.push({ ...JSON.parse(JSON.stringify(f)), id: `ability-${uid()}`, name: `${f.name} (2)`, toggle: f.toggle ? `${f.toggle}2` : undefined }))}
+                    >
+                      <Copy size={12} />
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-sm text-faint hover:text-bad"
+                      onClick={() =>
+                        update((c) => {
+                          c.customFeatures = c.customFeatures.filter((x) => x.id !== f.id)
+                          delete c.featureUses[`custom:${f.id}`]
+                          if (f.toggle) c.activeStates = c.activeStates.filter((s) => s !== f.toggle)
+                        })
+                      }
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Section>
         <Section
           title={t('custom.entities')}
           actions={
@@ -140,6 +202,7 @@ export function CustomTab() {
           )}
         </Section>
       </div>
+      <SpecialAbilityEditor open={ability !== null} onClose={() => setAbility(null)} initial={ability === 'new' ? null : ability} />
       <EntityEditor
         open={editing !== null}
         onClose={() => setEditing(null)}

@@ -93,7 +93,7 @@ export function combatOptions(char: Character, d: Derived, L: Lookup): OptionGro
     const a = f.activation
     const opt: CombatOption = { kind: 'feature', key: `ft:${f.key}`, feature: f }
     if (a === 'action' || a === 'bonus' || a === 'reaction') g[a].push(opt)
-    else if (f.uses) g.other.push(opt)
+    else if (f.uses || f.roll || f.toggle) g.other.push(opt)
   }
   // Standardhandlinger + Opportunity Attack
   for (const s of STD_ACTIONS) g.action.push({ kind: 'std', key: `std:${s.id}`, id: s.id, economy: s.economy })
