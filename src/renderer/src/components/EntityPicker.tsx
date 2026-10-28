@@ -7,6 +7,8 @@ import { Modal, SourceBadge } from './ui'
 import { useLookup, useUi } from '../store/ui'
 import { entityFacts } from './EntityInfo'
 import { matchesQuery } from '../lib/search'
+import { sortEntities, sortOptions } from '../lib/sorting'
+import { SortSelect, useSortChoice } from './SortSelect'
 import { BookFilterBar, BookFilterReset, useBookFilter } from './BookFilter'
 
 export function EntityPicker({
@@ -41,10 +43,10 @@ export function EntityPicker({
     }
   }, [open])
 
-  const all = useMemo(() => {
-    const list = kinds.flatMap((k) => L.all(k)).filter((e) => !filter || filter(e))
-    return list.sort((a, b) => ((a as SpellDef).level ?? 0) - ((b as SpellDef).level ?? 0) || a.name.localeCompare(b.name))
-  }, [L, kinds, filter])
+  const sortKind = kinds.length === 1 ? kinds[0] : 'mixed'
+  const sortOpts = sortOptions(sortKind)
+  const [sortId, setSortId] = useSortChoice(`picker:${[...kinds].sort().join(',')}`, sortOpts[0].id)
+  const all = useMemo(() => sortEntities(kinds.flatMap((k) => L.all(k)).filter((e) => !filter || filter(e)), sortKind, sortId), [L, kinds, filter, sortId])
   // Bokfilteret huskes per type, så «bare PHB» gjelder neste gang også
   const bf = useBookFilter([...kinds].sort().join(','), all)
   const inBooks = bf.filtered
@@ -96,9 +98,12 @@ export function EntityPicker({
       }
     >
       <div className="sticky -top-5 z-10 -mx-5 -mt-5 mb-3 space-y-2 border-b border-line-soft bg-panel px-5 py-3">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-          <input autoFocus className="input pl-9" placeholder={t('common.search')} value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+            <input autoFocus className="input pl-9" placeholder={t('common.search')} value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          {all.length > 8 && <SortSelect options={sortOpts} value={sortId} onChange={setSortId} className="w-52" />}
         </div>
         <BookFilterBar state={bf} />
         {levels.length > 1 && (

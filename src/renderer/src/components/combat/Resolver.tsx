@@ -57,15 +57,36 @@ export function Resolver({ opt, onClose }: { opt: CombatOption | null; onClose: 
 /* Felles småbiter                                                     */
 /* ------------------------------------------------------------------ */
 
-function EconomyWarning({ e }: { e: Economy }) {
+/** Advarsel når handlingen er brukt. `attackPer`: dette er et angrep i Attack-handlingen (med så mange angrep) */
+function EconomyWarning({ e, attackPer }: { e: Economy; attackPer?: number }) {
   const { t } = useTranslation()
-  const { c } = useCombat()
-  const used = e === 'action' ? c.turn.action && c.turn.attacks === 0 : e === 'bonus' ? c.turn.bonus : e === 'reaction' ? c.turn.reaction : false
-  if (!used) return null
+  const { char, c } = useCombat()
+  const noAttacksLeft = !!attackPer && c.turn.attacks >= attackPer
+  const used =
+    e === 'action'
+      ? attackPer
+        ? c.turn.action && (c.turn.attacks === 0 || noAttacksLeft)
+        : c.turn.action
+      : e === 'bonus'
+        ? c.turn.bonus
+        : e === 'reaction'
+          ? c.turn.reaction
+          : false
+  // 0 HP eller en condition som hindrer handlinger (Incapacitated, Unconscious, Stunned, Paralyzed, Petrified)
+  const blocker = char.hp.current <= 0 ? 'down' : char.conditions.find((x) => ['incapacitated', 'unconscious', 'stunned', 'paralyzed', 'petrified'].includes(x))
   return (
-    <div className="mb-3 flex items-center gap-2 rounded-xl border border-crimson/40 bg-crimson/10 px-3 py-2 text-sm text-crimson-2">
-      <AlertTriangle size={14} /> {t(`combat.alreadyUsed.${e}`)}
-    </div>
+    <>
+      {blocker && e !== 'free' && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl border border-bad/50 bg-bad/15 px-3 py-2 text-sm text-bad">
+          <AlertTriangle size={14} /> {blocker === 'down' ? t('combat.blockedDown') : t('combat.blockedCondition', { c: blocker })}
+        </div>
+      )}
+      {used && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl border border-crimson/40 bg-crimson/10 px-3 py-2 text-sm text-crimson-2">
+          <AlertTriangle size={14} /> {noAttacksLeft && e === 'action' ? t('combat.noAttacksLeft') : t(`combat.alreadyUsed.${e}`)}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -96,6 +117,14 @@ function TargetPicker({ value, onChange, multi = false, values, onMulti }: { val
   )
 }
 
+function Warn({ text }: { text: string }) {
+  return (
+    <div className="mb-3 flex items-center gap-2 rounded-xl border border-crimson/40 bg-crimson/10 px-3 py-2 text-sm text-crimson-2">
+      <AlertTriangle size={14} className="shrink-0" /> {text}
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------ */
 /* Angrep (våpen, unarmed, spell attack)                               */
 /* ------------------------------------------------------------------ */
@@ -108,12 +137,14 @@ interface AttackSetup {
   melee: boolean
   str: boolean
   mastery?: string
+  /** Sneak Attack krever et Finesse- eller ranged-våpen */
+  sneakOk?: boolean
 }
 
 /** Angrepsrull + treff/bom + skade, felles for våpen og spell attacks */
 function AttackRoll({ setup, onFinish, finishLabel }: { setup: AttackSetup; onFinish: (r: { hit: boolean; crit: boolean; damage: number; target?: string }) => void; finishLabel: string }) {
   const { t } = useTranslation()
-  const { char, lookup: L, c, physical } = useCombat()
+  const { char, lookup: L, c, mut, physical } = useCombat()
   const [target, setTarget] = useState<string | undefined>(c.combatants.find((x) => !x.self && !x.defeated)?.uid)
   const [atk, setAtk] = useState<number | null>(null)
   const [hit, setHit] = useState<boolean | null>(null)
@@ -121,7 +152,7 @@ function AttackRoll({ setup, onFinish, finishLabel }: { setup: AttackSetup; onFi
   const [dmg, setDmg] = useState<number | null>(null)
   const raging = char.activeStates.includes('raging')
   const rageDmg = raging && setup.melee && setup.str ? Number(classColumn(char, L, 'barbarian', 'Rage Damage') ?? 0) : 0
-  const sneak = classColumn(char, L, 'rogue', 'Sneak Attack') as string | undefined
+  const sneak = setup.sneakOk && !c.turn.sneakUsed ? (classColumn(char, L, 'rogue', 'Sneak Attack') as string | undefined) : undefined
   const [useSneak, setUseSneak] = useState(false)
   const conc = c.concentration?.spellId
   const markDie = conc === 'hunters-mark' ? '1d6' : conc === 'hex' ? '1d6' : undefined
@@ -204,7 +235,10 @@ function AttackRoll({ setup, onFinish, finishLabel }: { setup: AttackSetup; onFi
         <button
           className="btn btn-primary"
           disabled={hit === null || (hit && !!setup.damage && dmg === null)}
-          onClick={() => onFinish({ hit: !!hit, crit: !!hit && crit, damage: hit ? (dmg ?? 0) : 0, target })}
+          onClick={() => {
+            if (hit && useSneak && sneak) mut((cc) => void (cc.turn.sneakUsed = true))
+            onFinish({ hit: !!hit, crit: !!hit && crit, damage: hit ? (dmg ?? 0) : 0, target })
+          }}
         >
           <Swords size={14} /> {finishLabel}
         </button>
@@ -238,12 +272,12 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
     )
   // Off-hand: ingen positiv ability-modifier på skaden uten Two-Weapon Fighting
   const twf = char.feats.some((f) => f.featId === 'two-weapon-fighting')
-  const damage = opt.offhand && !twf ? a.damage.replace(/\+\d+$/, '') : a.damage
+  const damage = opt.offhand && !twf ? (a.offhandDamage ?? a.damage) : a.damage
   const ranged = isRanged(a)
   const usesStr = !ranged && !(a.properties.includes('finesse') && d.abilities.dex.mod > d.abilities.str.mod)
   return (
     <div>
-      <EconomyWarning e={opt.via} />
+      <EconomyWarning e={opt.via} attackPer={opt.via === 'action' ? per : undefined} />
       {opt.via === 'action' && (
         <p className="mb-3 text-sm text-muted">
           {t('combat.attackCount', { n: Math.min(per, c.turn.attacks + 1), max: per })}
@@ -269,7 +303,7 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
       )}
       <AttackRoll
         key={a.key}
-        setup={{ name: a.name, bonus: a.bonus?.value ?? 0, damage, damageType: a.damageType, melee: !ranged, str: usesStr, mastery: a.masteryActive ? a.mastery : undefined }}
+        setup={{ name: a.name, bonus: a.bonus?.value ?? 0, damage, damageType: a.damageType, melee: !ranged, str: usesStr, mastery: a.masteryActive ? a.mastery : undefined, sneakOk: ranged || a.properties.includes('finesse') }}
         finishLabel={t('combat.finishAttack')}
         onFinish={(r) => {
           mut((cc) => {
@@ -310,7 +344,10 @@ function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: str
   const freeLeft = free.filter((f) => f.left === null || f.left > 0)
   const kind = castingKind(sp.castingTime)
   const econ: Economy = kind === 'long' ? 'action' : kind
-  const caster = d.spellcasting.find((s) => s.classId === source) ?? d.spellcasting[0]
+  const srcCaster = d.spellSources[source]
+  const caster =
+    d.spellcasting.find((s) => s.classId === source) ??
+    (srcCaster ? { ...d.spellcasting[0], ability: srcCaster.ability, mod: srcCaster.mod, dc: { value: srcCaster.dc }, attack: { value: srcCaster.attack } } as unknown as (typeof d.spellcasting)[number] : d.spellcasting[0])
   const slotOpts = useMemo(() => {
     if (sp.level === 0) return []
     const o: { id: string; level: number; label: string; pact?: boolean; free?: FreeCast }[] = []
@@ -356,6 +393,8 @@ function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: str
       {phase === 'cast' && (
         <>
           <EconomyWarning e={econ} />
+          {char.activeStates.includes('raging') && <Warn text={t('combat.ragingNoSpells')} />}
+          {d.armorNotProficient && sp.level >= 0 && <Warn text={t('combat.armorNoSpells')} />}
           {freeLeft.length > 0 && (
             <div className="glow mb-3 rounded-xl border border-good/50 bg-good/10 px-3 py-2 text-sm text-good">
               ✦ {t('combat.freeOffer', { spell: sp.name, name: freeLeft.map((f) => f.label).join(' / ') })}
@@ -660,7 +699,7 @@ export function healSelf(_c: CombatState, ch: import('../../types').Character, n
 
 function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feature' }>; onDone: () => void }) {
   const { t } = useTranslation()
-  const { char, derived: d, mut, physical } = useCombat()
+  const { char, derived: d, c, mut, physical } = useCombat()
   const f = opt.feature
   const econ: Economy = f.activation === 'action' || f.activation === 'bonus' || f.activation === 'reaction' ? f.activation : 'free'
   const left = f.uses ? f.uses.max - f.uses.used : undefined
@@ -680,11 +719,14 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
   const [extraTemp, setExtraTemp] = useState('')
   const [extraHeal, setExtraHeal] = useState('')
   const rounds = f.duration ?? (isRage ? 100 : states.length ? 10 : undefined)
+  const heavyArmor = isRage && d.armorWorn?.category === 'heavy'
 
   if (phase === 'roll' && f.roll) return <FeatureRollStep f={f} onDone={onDone} />
   return (
     <div className="space-y-3">
       <EconomyWarning e={econ} />
+      {heavyArmor && <Warn text={t('combat.rageHeavy')} />}
+      {isRage && c.concentration && <Warn text={t('combat.rageConc', { name: c.concentration.name })} />}
       <div className="flex flex-wrap gap-2 text-xs">
         {econ !== 'free' && <span className="chip">{t(`combat.econ.${econ}`)}</span>}
         {f.uses && (
@@ -732,6 +774,11 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
               if (f.uses) ch.featureUses[f.key] = Math.min(f.uses.max, (ch.featureUses[f.key] ?? 0) + (pool ? spendN : 1))
               spend(cc, econ)
               for (const s of states) if (!ch.activeStates.includes(s)) ch.activeStates.push(s)
+              // Rage: ingen concentration mens du raser
+              if (isRage && cc.concentration) {
+                addLog(cc, 'info', t('combat.log.concLost', { name: cc.concentration.name }))
+                dropConcentration(cc, ch)
+              }
               if (states.length || isRage) addEffect(cc, ch, { name: f.name, rounds, state: states[0] })
               const rolled = heal ? (healAmt ?? 0) : poolHeal ? spendN : Number(extraHeal) || 0
               const tempGain = Number(extraTemp) || 0
@@ -805,7 +852,7 @@ function StdFlow({ id, economy, onDone }: { id: string; economy: Economy; onDone
   const per = d.features.some((f) => /extra attack/i.test(f.name))
   return (
     <div className="space-y-3">
-      <EconomyWarning e={economy} />
+      <EconomyWarning e={economy} attackPer={(id === 'grapple' || id === 'shove') && per ? attacksPerAction(d.features.map((f) => f.name)) : undefined} />
       {(id === 'grapple' || id === 'shove') && (
         <div className="rounded-xl border border-gold/40 bg-gold/5 p-3 text-sm">
           {t(`combat.${id}Text`, { dc })}

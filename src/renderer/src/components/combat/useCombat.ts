@@ -104,7 +104,9 @@ export function combatOptions(char: Character, d: Derived, L: Lookup): OptionGro
   for (const s of STD_ACTIONS) g.action.push({ kind: 'std', key: `std:${s.id}`, id: s.id, economy: s.economy })
   g.reaction.unshift({ kind: 'attack', key: 'opportunity', via: 'reaction' })
   const order = (o: CombatOption): number => (o.kind === 'attack' ? 0 : o.kind === 'feature' ? 1 : o.kind === 'spell' ? 2 + o.spell.level / 10 : 3)
-  for (const k of ['action', 'bonus', 'reaction', 'other'] as const) g[k].sort((a, b) => order(a) - order(b))
+  const nameOf = (o: CombatOption): string => (o.kind === 'attack' ? (o.attack?.kind === 'unarmed' ? '~' : (o.attack?.name ?? '')) : o.kind === 'spell' ? o.spell.name : o.kind === 'feature' ? o.feature.name : '')
+  // Angrep (Unarmed sist), features og spells (etter level) alfabetisk; standardhandlinger i fast rekkefølge
+  for (const k of ['action', 'bonus', 'reaction', 'other'] as const) g[k].sort((a, b) => order(a) - order(b) || (a.kind === 'std' || b.kind === 'std' ? 0 : nameOf(a).localeCompare(nameOf(b))))
   return g
 }
 

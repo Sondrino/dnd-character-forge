@@ -222,7 +222,7 @@ export default function PrintPage() {
                     .map((f) => (
                       <div key={f.key} className="entry" style={{ marginBottom: '1.2mm' }}>
                         <b>{f.name}</b> <span style={{ color: '#8a7457' }}>({f.source})</span>
-                        {f.uses ? ` [${f.uses.max}/${f.uses.recharge === 'short' ? 'SR' : 'LR'}]` : ''} – {f.summary}
+                        {f.uses ? ` [${f.uses.max}/${f.uses.recharge === 'short' || f.uses.recharge === 'shortOrLong' ? 'SR' : f.uses.recharge === 'shortOne' ? 'LR, 1/SR' : 'LR'}]` : ''} – {f.summary}
                       </div>
                     ))}
                 </div>

@@ -12,6 +12,7 @@ import { EntityPicker } from '../EntityPicker'
 import { uid } from '../../store/characters'
 import { useUi } from '../../store/ui'
 import { spellFilter } from '../../lib/spellFilter'
+import { featPrereqProblems } from '../../lib/rules'
 import { EntityLink } from '../EntityInfo'
 
 interface Opt {
@@ -132,6 +133,7 @@ export function ChoiceResolver({ p, compact }: { p: PendingChoice; compact?: boo
     case 'skill': {
       const opts: Opt[] = (p.options?.length ? (p.options as SkillId[]) : skills.map((s) => s.id)).map((id) => ({ id, label: skillById[id]?.name ?? cap(id) }))
       if (p.filter === 'skillOrTool') for (const tl of L.all('tool')) opts.push({ id: tl.id, label: tl.name })
+      opts.sort((a, b) => a.label.localeCompare(b.label))
       body = <ChipChoice options={opts.filter((o) => values.includes(o.id) || !derived.skills[o.id as SkillId]?.proficient)} value={values} count={p.count} onChange={set} />
       break
     }
@@ -143,12 +145,12 @@ export function ChoiceResolver({ p, compact }: { p: PendingChoice; compact?: boo
     case 'tool': {
       const f = p.filter ?? ''
       const tools = L.all('tool').filter((tl: ToolDef) => !f || f.split(/[-,]|or/).some((c) => c && tl.category === c.trim()) || (p.options ?? []).includes(tl.id))
-      body = <ChipChoice options={tools.map((tl) => ({ id: tl.id, label: tl.name, kind: 'tool' }))} value={values} count={p.count} onChange={set} />
+      body = <ChipChoice options={tools.sort((a, b) => a.name.localeCompare(b.name)).map((tl) => ({ id: tl.id, label: tl.name, kind: 'tool' }))} value={values} count={p.count} onChange={set} />
       break
     }
     case 'language': {
       const known = new Set(derived.proficiencies.languages)
-      const langs = L.all('language').filter((l) => !known.has(l.id) || values.includes(l.id))
+      const langs = L.all('language').filter((l) => !known.has(l.id) || values.includes(l.id)).sort((a, b) => a.name.localeCompare(b.name))
       body = (
         <div className="space-y-2">
           {(['standard', 'rare'] as const).map((r) => (
@@ -166,8 +168,10 @@ export function ChoiceResolver({ p, compact }: { p: PendingChoice; compact?: boo
       const groups = L.classOptions.filter((g) => g.group === p.filter)
       const merged = groups.flatMap((g) => g.items).filter((it, i, arr) => arr.findIndex((x) => x.id === it.id) === i)
       const group = groups.length ? { group: p.filter!, items: merged } : undefined
+      // Invocations o.l. med level-krav vises først fra det class-levelet
+      const clsLvl = char.classes.find((c) => c.classId === /^class:([^:]+):/.exec(p.key)?.[1])?.level ?? derived.totalLevel
       const opts: Opt[] = group
-        ? group.items.map((it) => ({ id: it.id, label: it.name }))
+        ? group.items.filter((it) => ((it as { level?: number }).level ?? 0) <= clsLvl || values.includes(it.id)).map((it) => ({ id: it.id, label: it.name }))
         : (p.options ?? []).map((o) => ({ id: o, label: L.get('class', o)?.name ?? cap(o) }))
       body = (
         <div className="space-y-2">
@@ -412,6 +416,8 @@ export function FeatSlot({ p }: { p: PendingChoice }) {
     const clsReq = /^([A-Z][a-z]+) \(/.exec(f.prerequisite ?? '')?.[1]?.toLowerCase()
     if (clsReq && L.get('class', clsReq) && !char.classes.some((c) => c.classId === clsReq)) return false
     if (p.options?.length && p.key !== 'background:feat' && !p.options.every((o) => !L.get('feat', o)) && !p.options.includes(f.id)) return false
+    // Forutsetninger (ability scores, armor training, spellcasting, level) må være oppfylt
+    if (featPrereqProblems(f, derived).length) return false
     if (p.filter === 'general') return f.category === 'general' && (f.minLevel ?? 0) <= derived.totalLevel
     if (p.filter === 'epicBoon') return f.category === 'epicBoon' || f.category === 'general'
     if (p.filter) return f.category === p.filter

@@ -17,6 +17,8 @@ export interface Settings {
   showSupplements: boolean
   /** Bokfilter i velgerne, per type (f.eks. 'spell'); tom/mangler = alle bøker */
   pickerBooks: Record<string, string[]>
+  /** Husket sortering per liste */
+  sorts?: Record<string, string>
   /** 3D-terninger med fysikk (av = enkel animasjon) */
   dice3d?: boolean
   /** Fargetema for 3D-terningene */

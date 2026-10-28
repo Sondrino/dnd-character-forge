@@ -17,6 +17,7 @@ import CombatPage from './pages/Combat'
 import Compendium from './pages/Compendium'
 import HomebrewPage from './pages/Homebrew'
 import SettingsPage from './pages/Settings'
+import i18n from './i18n'
 import PrintPage from './pages/Print'
 
 export default function App() {
@@ -35,8 +36,32 @@ export default function App() {
   )
 }
 
+/** Ctrl+Z / Ctrl+Y (eller Ctrl+Shift+Z) angrer og gjør om endringer på karakteren som er åpen */
+function useUndoKeys(): void {
+  useEffect(() => {
+    const h = (e: KeyboardEvent): void => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      const id = useUi.getState().activeCharacterId
+      if (!id) return
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        if (useCharacters.getState().undo(id)) useUi.getState().notify(i18n.t('char.undone'))
+      } else if (k === 'y' || (k === 'z' && e.shiftKey)) {
+        e.preventDefault()
+        if (useCharacters.getState().redo(id)) useUi.getState().notify(i18n.t('char.redone'))
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [])
+}
+
 function Shell() {
   const location = useLocation()
+  useUndoKeys()
   if (location.pathname.startsWith('/print/')) {
     return (
       <Routes>

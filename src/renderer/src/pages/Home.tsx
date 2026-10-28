@@ -1,14 +1,15 @@
 import { motion } from 'framer-motion'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Copy, Download, FileText, Heart, Plus, Shield, Trash2, Upload, Wand2, Sparkles } from 'lucide-react'
+import { Copy, Download, FileText, Heart, Plus, Shield, Trash2, Upload, Wand2, Sparkles, RotateCcw } from 'lucide-react'
 import { newCharacter, useCharacters } from '../store/characters'
 import { useLookup, useUi } from '../store/ui'
 import { computeCharacter } from '../engine/compute'
 import { Modal } from '../components/ui'
 import { api } from '../lib/api'
 import type { Character } from '../types'
+import { SortSelect, useSortChoice } from '../components/SortSelect'
 import { ClassEmblem } from '../components/ClassEmblem'
 
 export default function Home() {
@@ -19,7 +20,17 @@ export default function Home() {
   const add = useCharacters((s) => s.add)
   const importFiles = useCharacters((s) => s.importFiles)
   const notify = useUi((s) => s.notify)
-  const list = Object.values(characters).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  const [sortId, setSortId] = useSortChoice('home', 'recent')
+  const level = (c: (typeof characters)[string]): number => c.classes.reduce((s, x) => s + x.level, 0)
+  const list = Object.values(characters).sort((a, b) =>
+    sortId === 'name'
+      ? (a.name || '~').localeCompare(b.name || '~', 'nb', { numeric: true, sensitivity: 'base' })
+      : sortId === 'charLevel'
+        ? level(b) - level(a) || a.name.localeCompare(b.name)
+        : sortId === 'class'
+          ? (a.classes[0]?.classId ?? '~').localeCompare(b.classes[0]?.classId ?? '~') || a.name.localeCompare(b.name)
+          : b.updatedAt.localeCompare(a.updatedAt)
+  )
 
   const create = (): void => {
     const c = newCharacter()
@@ -64,6 +75,21 @@ export default function Home() {
         </div>
       </header>
 
+      {list.length > 1 && (
+        <div className="mb-3 flex justify-end">
+          <SortSelect
+            className="w-56"
+            value={sortId}
+            onChange={setSortId}
+            options={[
+              { id: 'recent', label: 'recent' },
+              { id: 'name', label: 'name' },
+              { id: 'charLevel', label: 'charLevel' },
+              { id: 'class', label: 'class' }
+            ]}
+          />
+        </div>
+      )}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-5">
         <motion.button
           initial={{ opacity: 0, scale: 0.95 }}
@@ -82,6 +108,7 @@ export default function Home() {
           <CharacterCard key={c.id} c={c} index={i} />
         ))}
       </div>
+      <TrashSection count={list.length} />
       {loaded && list.length === 0 && (
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-10 text-center font-serif text-lg text-muted">
           <Sparkles className="mr-2 inline text-gold" size={18} />
@@ -193,5 +220,45 @@ function CharacterCard({ c, index }: { c: Character; index: number }) {
         {t('home.deleteText', { name: c.name || t('common.unnamed') })}
       </Modal>
     </>
+  )
+}
+
+/** Slettede karakterer ligger i papirkurven i 30 dager og kan hentes tilbake */
+function TrashSection({ count }: { count: number }) {
+  const { t } = useTranslation()
+  const restore = useCharacters((s) => s.restore)
+  const notify = useUi((s) => s.notify)
+  const [items, setItems] = useState<{ file: string; name: string; deletedAt: number }[]>([])
+  const [open, setOpen] = useState(false)
+  const reload = (): void => void api.trashList().then(setItems).catch(() => setItems([]))
+  // Last på nytt når antallet karakterer endrer seg (f.eks. etter sletting)
+  useEffect(reload, [count])
+  if (!items.length) return null
+  return (
+    <div className="mt-8">
+      <button className="btn btn-ghost btn-sm text-muted" onClick={() => setOpen(!open)}>
+        <Trash2 size={13} /> {t('home.trash', { n: items.length })} {open ? '▾' : '▸'}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1">
+          <p className="text-xs text-muted">{t('home.trashHint')}</p>
+          {items.map((it) => (
+            <div key={it.file} className="flex items-center gap-3 rounded-lg border border-line-soft px-3 py-1.5 text-sm">
+              <span className="font-display text-gold">{it.name || t('common.unnamed')}</span>
+              <span className="text-xs text-muted">{it.deletedAt ? new Date(it.deletedAt).toLocaleString() : ''}</span>
+              <button
+                className="btn btn-sm ml-auto"
+                onClick={async () => {
+                  if (await restore(it.file)) notify(t('home.restored', { name: it.name || t('common.unnamed') }), 'good')
+                  reload()
+                }}
+              >
+                <RotateCcw size={13} /> {t('home.restore')}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

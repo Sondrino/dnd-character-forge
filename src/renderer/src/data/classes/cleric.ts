@@ -184,7 +184,7 @@ If a Channel Divinity effect requires a saving throw, the DC equals the spell sa
 You roll an additional d8 when you reach Cleric levels 7 (2d8), 13 (3d8), and 18 (4d8).
 
 **Turn Undead.** As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die.`,
-      uses: { count: 'Channel Divinity', recharge: 'long' },
+      uses: { count: 'Channel Divinity', recharge: 'shortOne' },
       activation: 'action'
     },
     {

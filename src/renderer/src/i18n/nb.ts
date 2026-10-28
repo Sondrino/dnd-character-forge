@@ -8,13 +8,14 @@ export const nb = {
     level: 'Level', loading: 'Laster …', name: 'Navn', next: 'Neste', noResults: 'Ingen treff', save: 'Lagre', search: 'Søk …', unnamed: 'Uten navn'
   },
   home: {
+    trash: 'Nylig slettet ({{n}})', trashHint: 'Slettede karakterer ligger her i 30 dager.', restore: 'Gjenopprett', restored: '{{name}} er gjenopprettet', 
     tagline: 'Lag, utvikle og spill D&D-karakterer etter 2024-reglene – med all regeldata, terninger og tips samlet ett sted.',
     new: 'Ny karakter', newHint: 'Steg-for-steg-veiviser', import: 'Importer', export: 'Eksporter', imported: '{{n}} karakter(er) importert',
     empty: 'Ingen karakterer ennå – lag din første helt!', build: 'Veiviser', duplicate: 'Dupliser', todo: '{{n}} å gjøre',
     deleteTitle: 'Slette karakter?', deleteText: 'Er du sikker på at du vil slette {{name}}? Dette kan ikke angres.'
   },
   tabs: { adjust: 'Egne verdier', sheet: 'Ark', spells: 'Spells', inventory: 'Utstyr', features: 'Features & valg', details: 'Detaljer', custom: 'Egne ting' },
-  char: { builderTip: 'Endre class, species, background, ability scores, utstyr og mer', adjust: 'Egne verdier', adjustTip: 'Juster eller overstyr alle verdier for custom game', levelDown: 'Gå ned et level', notFound: 'Fant ikke karakteren.', builder: 'Rediger', levelUp: 'Level up' },
+  char: { undone: 'Angret', redone: 'Gjort om', undoTip: 'Angre (Ctrl+Z)', redoTip: 'Gjør om (Ctrl+Y)', builderTip: 'Endre class, species, background, ability scores, utstyr og mer', adjust: 'Egne verdier', adjustTip: 'Juster eller overstyr alle verdier for custom game', levelDown: 'Gå ned et level', notFound: 'Fant ikke karakteren.', builder: 'Rediger', levelUp: 'Level up' },
   info: { thirdPartyNote: 'Tredjepartsinnhold fra {{book}}, brukt under lisensen {{license}}. Det er ikke offisielt D&D-innhold – spør DM-en om det er tillatt i kampanjen. Se «Open Content Licenses» i Oppslag.', supplementNote: 'Offisiell tilleggsbok: {{book}}. Dette er bare et kort sammendrag med egne ord – full tekst finnes i boken eller på D&D Beyond.',
     aka: 'I Player’s Handbook: {{names}}', more: 'Mer info', openDdb: 'Åpne på D&D Beyond', phbNote: 'Dette er et kort sammendrag med egne ord. Full regeltekst finner du i {{book}} eller på D&D Beyond.',
     addInventory: 'Legg i utstyr', owned: 'Har {{n}}', addSpell: 'Legg til spell', known: 'Kjent', addFeat: 'Legg til feat', hasFeat: 'Har denne',
@@ -28,6 +29,7 @@ export const nb = {
     advantage: 'Advantage', disadvantage: 'Disadvantage', overridden: 'Manuelt satt (beregnet: {{v}})', reset: 'Tilbakestill', edit: 'Endre eller juster verdien'
   },
   sheet: {
+    stable: 'Stabil på 0 HP', dead: 'Død', 
     exhaustionEffect: '−{{d}} på D20 Tests · −{{s}} ft. speed · long rest fjerner 1 nivå', exhaustionDead: 'Exhaustion 6 – karakteren dør.', 
     unarmored: 'Uten rustning', initiative: 'Initiative', speed: 'Speed', passivePerception: 'Passive Perc.', inspiration: 'Inspiration',
     size: 'Størrelse', passiveInsight: 'Passive Insight', passiveInvestigation: 'Passive Investigation', hitPoints: 'Hit Points', max: 'Maks',
@@ -40,6 +42,7 @@ export const nb = {
     activeStates: 'Aktive tilstander (slår på effekter)'
   },
   spells: {
+    castFree: '{{name}} kastet gratis ({{via}})', 
     ability: 'Ability', dc: 'Save DC', attack: 'Spell attack', cantrips: 'Cantrips', prepared: 'Prepared', maxLevel: 'Høyeste spell-nivå: {{n}}',
     addCantrip: 'Velg cantrips', addSpell: 'Velg spells', slots: 'Spell slots', noSlots: 'Ingen spell slots.', shortRest: 'Short rest',
     resetSlots: 'Nullstill slots', addAny: 'Legg til en spell fra hvilken som helst liste', empty: 'Ingen spells ennå',
@@ -77,6 +80,11 @@ export const nb = {
     pickBackgroundFirst: 'Velg background først.', bgTotal: 'Brukt {{n}} av 3 poeng', addFeat: 'Legg til {{name}}', pickFeat: 'Velg feat',
     pickMastery: 'Velg våpen for Weapon Mastery'
   },
+  sort: {
+    title: 'Sorter', name: 'Navn A–Å', nameDesc: 'Navn Å–A', book: 'Bok', level: 'Spell-level', school: 'School', rarity: 'Rarity', type: 'Type', cr: 'Challenge rating',
+    category: 'Kategori', damage: 'Skade (høyest først)', cost: 'Pris (lavest først)', weight: 'Vekt (lettest først)', ac: 'AC', class: 'Class', pantheon: 'Pantheon', kind: 'Type',
+    recent: 'Sist endret', charLevel: 'Level (høyest først)', manual: 'Rekkefølge lagt til', equipped: 'I bruk først', value: 'Verdi (høyest først)'
+  },
   picker: { books: 'Bøker:', allBooks: 'Alle bøker', booksHint: 'Klikk en bok for å vise bare den. Klikk flere for å ta med flere. Valget huskes.', clearBooks: 'Vis alle bøker ({{n}} skjult)', showMore: 'Vis flere ({{n}} til) – eller søk for å snevre inn', selected: 'Valgt {{n}} av {{max}}' },
   tips: {
     title: 'Tips & å gjøre', warning: 'Advarsler', todo: 'Å gjøre', suggestion: 'Forslag', info: 'Info', fix: 'Fiks dette', none: 'Ingen tips – alt ser bra ut! ✦'
@@ -89,6 +97,7 @@ export const nb = {
     newChoices: 'Nye valg å ta', spellsHint: 'Husk å se på spells-fanen for nye cantrips/spells.'
   },
   rest: {
+    needHp: 'Du må ha minst 1 HP for å starte en rest (2024). Bli helbredet eller stabilisert først – eller fortsett hvis DM-en tillater det.', 
     short: 'Short Rest (1 time)', long: 'Long Rest (8 timer)', shortBtn: 'Short', longBtn: 'Long', take: 'Ta rest', spend: 'Bruk',
     shortText: 'Bruk Hit Dice for å gjenvinne HP. Features som lades ved Short Rest og Pact Magic-slots fylles opp.',
     longText: 'Gjenvinn alle HP, alle Hit Dice og spell slots. Features fylles opp og Exhaustion reduseres med 1.',
@@ -128,9 +137,35 @@ export const nb = {
     new: 'Ny homebrew', edit: 'Rediger {{name}}', copyFrom: 'Kopier fra eksisterende', type: 'Type', summary: 'Kort beskrivelse',
     summaryHint: 'Vises i den lille popupen', editText: 'Rediger', preview: 'Forhåndsvis', effects: 'Effekter (oppdaterer arket automatisk)',
     effectsHint: 'F.eks. AC +1, Speed +10, advantage på Stealth, resistance mot fire …', addEffect: 'Legg til effekt', condition: 'Betingelse (valgfri)',
-    noEffects: 'Ingen effekter', intro: 'Felles bibliotek for egne items, spells og feats som kan brukes av alle karakterene dine.',
+    noEffects: 'Ingen effekter', intro: 'Felles bibliotek for egne subclasses, species, backgrounds, feats, spells, items, monstre og mer – brukbart for alle karakterene dine og lett å dele med andre.',
     empty: 'Biblioteket er tomt', emptyText: 'Lag homebrew her, eller lagre fra en karakters «Egne ting»-fane.', effectCount: '{{n}} effekt(er)',
-    imported: '{{n}} importert', importFail: 'Kunne ikke lese filen'
+    imported: '{{n}} importert', importFail: 'Kunne ikke lese filen',
+    featuresHint: 'Klikk en feature for å redigere: level, bruk, effekter og hva den gjør i kamp.', addFeature: 'Legg til feature', editFeature: 'Rediger feature', noFeatures: 'Ingen features ennå.',
+    subclassHint: '{{cls}} velger subclass på level {{lvl}}. Features vises på arket fra levelet du setter, og kan brukes i kampmodus.',
+    subclassFeatures: 'Subclass-features', alwaysPrepared: 'Spells som alltid er prepared', alwaysPreparedHint: 'F.eks. domain- eller oath-spells. Legges automatisk til fra class-levelet du velger.',
+    addSpellLevel: 'Legg til level', classLevel: 'Class-level', noSpells: 'Ingen spells.', traits: 'Traits', speciesSpells: 'Medfødte spells',
+    speciesSpellsHint: 'Gis automatisk fra karakter-levelet du velger, og kan kastes gratis én gang per long rest i kampmodus.', charLevel: 'Karakter-level',
+    bgAbilities: 'Ability scores (velg 3 – {{n}} valgt)', toolChoice: 'Valgfritt: {{what}}', bgSkills: 'Skill proficiencies (velg 2 – {{n}} valgt)', equipment: 'Startutstyr', addItems: 'Legg til utstyr',
+    statBlock: 'Stat block (traits, actions …)', statBlockPh: '**Traits.** …\n\n### Actions\n**Bite.** Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8 + 2) Piercing damage.',
+    err: { name: 'Navn mangler', abilities: 'Velg nøyaktig 3 ability scores', skills: 'Velg nøyaktig 2 skills', class: 'Velg en class' },
+    importTip: 'Importer homebrew fra en .json-fil (fra en venn eller en annen PC)', exportTip: 'Lagre hele biblioteket som én fil som kan deles',
+    duplicated: '{{name}} duplisert', editShort: 'Rediger', duplicate: 'Dupliser', exportOne: 'Eksporter denne som fil',
+    chooseKind: 'Hva vil du lage?', deleteTitle: 'Slette?', deleteText: '{{name}} slettes fra biblioteket. Karakterer som bruker den, mister den.',
+    kindDesc: {
+      subclass: 'Egen subclass for en class – med features per level og spells som alltid er prepared.',
+      species: 'Egen species med størrelse, speed, darkvision, traits og medfødte spells.',
+      background: 'Eget background med ability scores, origin feat, skills, tool og utstyr.',
+      feat: 'Origin, general, fighting style eller epic boon – med effekter.',
+      spell: 'Eget spell med skade, save, angrep og klasser.',
+      magicItem: 'Magisk gjenstand med rarity, attunement, bonus og effekter.',
+      weapon: 'Våpen med skade, properties og mastery.',
+      armor: 'Rustning eller skjold med AC.',
+      gear: 'Utstyr, verktøy eller andre ting.',
+      tool: 'Verktøy eller instrument.',
+      creature: 'Monster, companion eller familiar med stat block – kan legges til i kampmodus.',
+      language: 'Eget språk for verdenen din.'
+    },
+    useHint: { subclass: 'velg ved level up / i veiviseren', species: 'velg i veiviseren', background: 'velg i veiviseren', creature: 'brukes i kampmodus' }
   },
   settings: { showSupplements: 'Vis innhold fra tilleggsbøker (Xanathar’s, Tasha’s …)', showThirdParty: 'Vis tredjepartsinnhold (Kobold Press, Level Up A5E …)', sourcesHint: 'Skjulte kilder forsvinner fra lister og velgere. Karakterer som allerede bruker dem, påvirkes ikke.',
     appearance: 'Utseende', language: 'Språk', theme: 'Tema', dark: 'Mørkt', light: 'Lyst', animations: 'Animasjoner', diceSound: 'Terninglyd',

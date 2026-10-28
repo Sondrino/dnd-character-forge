@@ -25,7 +25,7 @@ describe('data', () => {
   it('har lastet regeldata', () => {
     const count = (k: string) => allEntities.filter((e) => e.kind === k).length
     expect(count('class')).toBe(13) // 12 PHB + Artificer (TCE)
-    expect(count('species')).toBe(41) // 9 SRD + Aasimar (PHB 2024) + Custom Lineage (TCE) + 30 MPMM
+    expect(count('species')).toBe(51) // 9 SRD + Aasimar (PHB 2024) + Custom Lineage (TCE) + 30 MPMM + 10 PHB 2014
     expect(count('spell')).toBeGreaterThan(300)
     expect(count('weapon')).toBeGreaterThan(30)
     expect(count('magicItem')).toBeGreaterThan(200)

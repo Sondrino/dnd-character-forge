@@ -97,6 +97,52 @@ function createMainWindow(): void {
 
 const charDir = (): string => dataDir('characters')
 
+const backupDir = (id: string): string => join(dataDir('backups'), id)
+const trashDir = (): string => dataDir('trash')
+const safe = (id: string): string => id.replace(/[^a-zA-Z0-9-_]/g, '')
+
+/** Nyeste sikkerhetskopi som kan leses (brukes hvis hovedfilen er ødelagt) */
+async function newestBackup(id: string): Promise<unknown | null> {
+  try {
+    const files = (await fs.readdir(backupDir(id))).filter((f) => f.endsWith('.json')).sort().reverse()
+    for (const f of files) {
+      try {
+        return JSON.parse(await fs.readFile(join(backupDir(id), f), 'utf-8'))
+      } catch {
+        /* prøv neste */
+      }
+    }
+  } catch {
+    /* ingen kopier */
+  }
+  return null
+}
+
+/** Én kopi per karakter per dag før den overskrives; de 14 nyeste beholdes */
+async function backupOncePerDay(id: string, file: string): Promise<void> {
+  try {
+    const dir = backupDir(id)
+    await ensureDir(dir)
+    const target = join(dir, `${new Date().toISOString().slice(0, 10)}.json`)
+    try {
+      await fs.access(target)
+      return
+    } catch {
+      /* ingen kopi i dag */
+    }
+    try {
+      JSON.parse(await fs.readFile(file, 'utf-8'))
+      await fs.copyFile(file, target)
+    } catch {
+      return
+    }
+    const all = (await fs.readdir(dir)).filter((f) => f.endsWith('.json')).sort()
+    for (const old of all.slice(0, Math.max(0, all.length - 14))) await fs.rm(join(dir, old), { force: true })
+  } catch {
+    /* sikkerhetskopi er best-effort */
+  }
+}
+
 handle('characters:list', async () => {
   await ensureDir(charDir())
   const files = (await fs.readdir(charDir())).filter((f) => f.endsWith('.json'))
@@ -105,7 +151,9 @@ handle('characters:list', async () => {
     try {
       out.push(JSON.parse(await fs.readFile(join(charDir(), f), 'utf-8')))
     } catch {
-      /* hopp over ødelagte filer */
+      // Ødelagt fil: bruk nyeste sikkerhetskopi i stedet for å miste karakteren
+      const backup = await newestBackup(f.replace(/\.json$/, ''))
+      if (backup) out.push(backup)
     }
   }
   return out
@@ -114,16 +162,57 @@ handle('characters:list', async () => {
 handle('characters:save', async (_e, character: { id: string }) => {
   if (!character || typeof character.id !== 'string' || !character.id) throw new Error('Invalid character')
   await ensureDir(charDir())
-  const safeId = character.id.replace(/[^a-zA-Z0-9-_]/g, '')
-  await fs.writeFile(join(charDir(), `${safeId}.json`), JSON.stringify(character, null, 2), 'utf-8')
+  const safeId = safe(character.id)
+  const file = join(charDir(), `${safeId}.json`)
+  await backupOncePerDay(safeId, file)
+  // Skriv til en midlertidig fil og bytt den inn – en krasj midt i skrivingen ødelegger ikke karakteren
+  const tmp = `${file}.tmp`
+  await fs.writeFile(tmp, JSON.stringify(character, null, 2), 'utf-8')
+  await fs.rename(tmp, file)
   return true
 })
 
 handle('characters:delete', async (_e, id: string) => {
   if (typeof id !== 'string' || !id) throw new Error('Invalid id')
-  const safeId = id.replace(/[^a-zA-Z0-9-_]/g, '')
-  await fs.rm(join(charDir(), `${safeId}.json`), { force: true })
+  const safeId = safe(id)
+  // Flytt til papirkurven i stedet for å slette for godt
+  await ensureDir(trashDir())
+  try {
+    await fs.rename(join(charDir(), `${safeId}.json`), join(trashDir(), `${safeId}--${Date.now()}.json`))
+  } catch {
+    await fs.rm(join(charDir(), `${safeId}.json`), { force: true })
+  }
   return true
+})
+
+handle('characters:trash', async () => {
+  await ensureDir(trashDir())
+  const out: { file: string; name: string; deletedAt: number }[] = []
+  for (const f of (await fs.readdir(trashDir())).filter((x) => x.endsWith('.json'))) {
+    const deletedAt = Number(f.match(/--(\d+)\.json$/)?.[1] ?? 0)
+    // Rydd bort det som har ligget mer enn 30 dager
+    if (deletedAt && Date.now() - deletedAt > 30 * 24 * 3600 * 1000) {
+      await fs.rm(join(trashDir(), f), { force: true })
+      continue
+    }
+    try {
+      const c = JSON.parse(await fs.readFile(join(trashDir(), f), 'utf-8')) as { name?: string }
+      out.push({ file: f, name: c.name || '', deletedAt })
+    } catch {
+      /* hopp over */
+    }
+  }
+  return out.sort((a, b) => b.deletedAt - a.deletedAt)
+})
+
+handle('characters:restore', async (_e, file: string) => {
+  if (typeof file !== 'string' || !/^[a-zA-Z0-9-_]+--\d+\.json$/.test(file)) throw new Error('Invalid file')
+  const from = join(trashDir(), file)
+  const c = JSON.parse(await fs.readFile(from, 'utf-8')) as { id: string }
+  await ensureDir(charDir())
+  await fs.writeFile(join(charDir(), `${safe(c.id)}.json`), JSON.stringify(c, null, 2), 'utf-8')
+  await fs.rm(from, { force: true })
+  return c
 })
 
 handle('characters:export', async (_e, character: { name?: string }) => {

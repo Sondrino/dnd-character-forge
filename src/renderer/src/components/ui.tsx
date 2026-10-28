@@ -186,7 +186,9 @@ const BOOK_ABBR: Record<string, string> = {
   'Dungeon Master’s Guide (2024)': 'DMG 2024',
   'Monster Manual (2025)': 'MM 2025',
   'Forgotten Realms: Heroes of Faerûn': 'Heroes of Faerûn',
-  'Mordenkainen Presents: Monsters of the Multiverse': 'MPMM'
+  'Mordenkainen Presents: Monsters of the Multiverse': 'MPMM',
+  "Player's Handbook (2014)": 'PHB 2014',
+  'Player’s Handbook (2014)': 'PHB 2014'
 }
 
 export const PHB_BOOK = 'Player’s Handbook (2024)'

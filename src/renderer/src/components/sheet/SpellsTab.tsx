@@ -12,6 +12,7 @@ import { useRolls } from '../../store/rolls'
 import { useUi } from '../../store/ui'
 import { abilityNames } from '../../data/skills'
 import { spellFilter } from '../../lib/spellFilter'
+import { freeCasts } from '../../lib/combat'
 
 export function SpellsTab() {
   const { t } = useTranslation()
@@ -198,7 +199,12 @@ export function SpellsTab() {
                         <button
                           className="btn btn-sm"
                           onClick={() => {
-                            if (useSlot(sp.level)) notify(t('spells.cast', { name: sp.name }), 'good')
+                            // Gratis-kast (feat, species, Favored Enemy …) brukes før spell slots
+                            const free = freeCasts(char, d, L, sp).find((f) => f.left === null || f.left > 0)
+                            if (free) {
+                              if (free.useKey) update((c) => void (c.featureUses[free.useKey!] = (c.featureUses[free.useKey!] ?? 0) + 1))
+                              notify(t('spells.castFree', { name: sp.name, via: free.label }), 'good')
+                            } else if (useSlot(sp.level)) notify(t('spells.cast', { name: sp.name }), 'good')
                             else notify(t('spells.noSlotLeft'), 'bad')
                           }}
                         >
@@ -224,6 +230,10 @@ export function SpellsTab() {
           kinds={['spell']}
           title={picker.cantrip ? t('spells.addCantrip') : t('spells.addSpell')}
           multi
+          max={(() => {
+            const sc = d.spellcasting.find((x) => x.classId === picker.classId)
+            return sc ? (picker.cantrip ? sc.cantripsMax : sc.preparedMax) || undefined : undefined
+          })()}
           selected={char.spells.filter((s) => s.source === picker.classId).map((s) => s.spellId).filter((id) => {
             const lv = (L.get('spell', id) as SpellDef | undefined)?.level ?? 0
             return picker.cantrip ? lv === 0 : lv > 0

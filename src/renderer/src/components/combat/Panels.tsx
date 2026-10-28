@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Brain, ChevronDown, ChevronUp, Heart, HeartCrack, Plus, Shield, Skull, Sparkles, Trash2, UserPlus, X } from 'lucide-react'
+import { BookOpen, Brain, ChevronDown, ChevronUp, Copy, Heart, HeartCrack, Plus, Shield, Skull, Sparkles, Trash2, UserPlus, X } from 'lucide-react'
 import type { Ability, DamageType } from '../../types'
 import { ABILITIES } from '../../types'
 import { Modal, NumberInput, Section } from '../ui'
@@ -11,6 +11,8 @@ import { healSelf } from './Resolver'
 import { signed, useCombat } from './useCombat'
 import { addEffect, addLog, applyDamage, deathSave, dropConcentration, endEffects, initiativeOrder, uidc } from '../../lib/combat'
 import { useRolls } from '../../store/rolls'
+import { EntityPicker } from '../EntityPicker'
+import type { CreatureDef } from '../../types'
 
 const DAMAGE_TYPES: DamageType[] = ['acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder']
 const ABIL: Record<Ability, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
@@ -50,6 +52,8 @@ export function VitalsPanel() {
         addLog(cc, 'death', t('combat.log.down'))
       }
       if (r.deathFailures) {
+        // Skade på 0 HP: ikke lenger stabil
+        if (ch.deathSaves.successes >= 3) ch.deathSaves.successes = 0
         ch.deathSaves.failures = Math.min(3, ch.deathSaves.failures + r.deathFailures)
         addLog(cc, 'death', t('combat.log.deathFail', { n: r.deathFailures }))
       }
@@ -144,8 +148,9 @@ function DeathSaves() {
   const { char, derived: d, c, mut, physical } = useCombat()
   const [v, setV] = useState<number | null>(null)
   const ds = char.deathSaves
-  const apply = (roll: number): void => {
-    const r = deathSave(roll, ds)
+  /** natural = terningen (20/1 er spesielle), total = etter Exhaustion-fratrekk */
+  const apply = (total: number, natural?: number): void => {
+    const r = deathSave(natural === 20 || natural === 1 ? natural : Math.max(2, total), ds)
     mut((cc, ch) => {
       if (r.revived) {
         ch.hp.current = 1
@@ -154,7 +159,7 @@ function DeathSaves() {
         addLog(cc, 'death', t('combat.log.nat20Up'))
       } else {
         ch.deathSaves = { successes: r.successes, failures: r.failures }
-        addLog(cc, 'death', t('combat.log.deathSave', { n: roll, s: r.successes, f: r.failures }))
+        addLog(cc, 'death', t('combat.log.deathSave', { n: total, s: r.successes, f: r.failures }))
         if (r.stable) addLog(cc, 'death', t('combat.log.stable'))
         if (r.dead) addLog(cc, 'death', t('combat.log.dead'))
       }
@@ -177,10 +182,21 @@ function DeathSaves() {
       ) : (
         <>
           <p className="mb-2 text-xs text-muted">{t('combat.deathSaveHelp')}</p>
-          <RollBox label={t('combat.deathSave')} notation={d.exhaustion ? `1d20-${2 * d.exhaustion}` : '1d20'} hint={d.exhaustion ? t('combat.exhaustionOnSave', { n: 2 * d.exhaustion }) : undefined} value={v} onValue={(x) => (setV(x), x !== null && !physical && apply(x))} physical={physical} character={char.name} />
+          <RollBox
+            label={t('combat.deathSave')}
+            notation={d.exhaustion ? `1d20-${2 * d.exhaustion}` : '1d20'}
+            hint={d.exhaustion ? t('combat.exhaustionOnSave', { n: 2 * d.exhaustion }) : undefined}
+            value={v}
+            onValue={(x, r) => {
+              setV(x)
+              if (x !== null && r) apply(r.total, r.terms.find((tm) => tm.dice.length)?.dice[0]?.value)
+            }}
+            physical={physical}
+            character={char.name}
+          />
           {physical && (
             <div className="mt-2 flex justify-end">
-              <button className="btn btn-primary btn-sm" disabled={v === null} onClick={() => v !== null && apply(v)}>
+              <button className="btn btn-primary btn-sm" disabled={v === null} onClick={() => v !== null && apply(v - 2 * d.exhaustion, v)}>
                 {t('combat.applyDeathSave')}
               </button>
             </div>
@@ -384,6 +400,11 @@ export function StatusPanel() {
                 mut((cc, ch) => {
                   ch.conditions = on ? ch.conditions.filter((y) => y !== x.id) : [...ch.conditions, x.id]
                   addLog(cc, 'info', `${on ? '−' : '+'} ${x.name}`)
+                  // Incapacitated (også via Unconscious, Stunned, Paralyzed, Petrified) avslutter concentration
+                  if (!on && cc.concentration && ['incapacitated', 'unconscious', 'stunned', 'paralyzed', 'petrified'].includes(x.id)) {
+                    addLog(cc, 'info', t('combat.log.concLost', { name: cc.concentration.name }))
+                    dropConcentration(cc, ch)
+                  }
                 })
               }
             >
@@ -427,6 +448,30 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
   const current = order[c.turnIdx]
   const [form, setForm] = useState<{ name: string; init: string; initMod: string; hp: string; ac: string; count: number; ally: boolean } | null>(null)
   const [dmgFor, setDmgFor] = useState<Record<string, string>>({})
+  const [bestiary, setBestiary] = useState(false)
+
+  /** Legg til skapninger fra bestiariet (SRD-monstre og egne) med AC, HP og rullet initiativ */
+  const addCreatures = (list: CreatureDef[]): void =>
+    mut((cc) => {
+      const curUid = initiativeOrder(cc.combatants)[cc.turnIdx]?.uid
+      for (const cr of list) {
+        const dex = Math.floor(((cr.abilities?.dex ?? 10) - 10) / 2)
+        const hp = parseInt(String(cr.hp), 10)
+        const same = cc.combatants.filter((x) => x.name === cr.name || x.name.startsWith(`${cr.name} `)).length
+        cc.combatants.push({
+          uid: uidc(),
+          name: same ? `${cr.name} ${same + 1}` : cr.name,
+          init: roll(`1d20${signed(dex)}`, `${cr.name} initiative`).total,
+          hp: Number.isFinite(hp) ? hp : undefined,
+          maxHp: Number.isFinite(hp) ? hp : undefined,
+          ac: cr.ac,
+          note: `CR ${cr.cr}`
+        })
+      }
+      const idx = initiativeOrder(cc.combatants).findIndex((x) => x.uid === curUid)
+      if (idx >= 0) cc.turnIdx = idx
+      addLog(cc, 'info', t('combat.log.joined', { name: list.map((c) => c.name).join(', '), n: list.length }))
+    })
 
   const add = (): void => {
     if (!form || !form.name.trim()) return
@@ -460,9 +505,14 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
     <Section
       title={t('combat.initiative')}
       actions={
-        <button className="btn btn-sm" onClick={() => setForm({ name: '', init: '', initMod: '0', hp: '', ac: '', count: 1, ally: false })}>
-          <UserPlus size={13} /> {t('combat.addCombatant')}
-        </button>
+        <>
+          <button className="btn btn-sm" onClick={() => setBestiary(true)} title={t('combat.bestiaryTip')}>
+            <BookOpen size={13} /> {t('combat.bestiary')}
+          </button>
+          <button className="btn btn-sm" onClick={() => setForm({ name: '', init: '', initMod: '0', hp: '', ac: '', count: 1, ally: false })}>
+            <UserPlus size={13} /> {t('combat.addCombatant')}
+          </button>
+        </>
       }
     >
       {form && (
@@ -549,6 +599,18 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
                       setDmgFor({ ...dmgFor, [x.uid]: '' })
                     }}
                   />
+                  <button
+                    className="btn btn-ghost btn-sm px-1"
+                    title={t('combat.duplicate')}
+                    onClick={() =>
+                      mut((cc) => {
+                        const n = cc.combatants.filter((y) => y.name.replace(/ \d+$/, '') === x.name.replace(/ \d+$/, '')).length + 1
+                        cc.combatants.push({ ...x, uid: uidc(), name: `${x.name.replace(/ \d+$/, '')} ${n}`, hp: x.maxHp ?? x.hp, defeated: false })
+                      })
+                    }
+                  >
+                    <Copy size={12} />
+                  </button>
                   <button className="btn btn-ghost btn-sm px-1" title={t('combat.defeated')} onClick={() => mut((cc) => void (cc.combatants.find((y) => y.uid === x.uid)!.defeated = !x.defeated))}>
                     <Skull size={13} className={x.defeated ? 'text-bad' : ''} />
                   </button>
@@ -573,6 +635,15 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
         })}
       </div>
       {order.length === 1 && <p className="mt-2 text-xs text-muted">{t('combat.soloHint')}</p>}
+      <EntityPicker
+        open={bestiary}
+        onClose={() => setBestiary(false)}
+        kinds={['creature']}
+        title={t('combat.bestiary')}
+        multi
+        groupBy={(e) => (e as CreatureDef).creatureType}
+        onConfirm={(_ids, ents) => addCreatures(ents as CreatureDef[])}
+      />
       <div className="mt-3 flex items-center gap-2">
         <span className="text-sm text-muted">{current?.self ? t('combat.yourTurn') : t('combat.theirTurn', { name: current?.name ?? '' })}</span>
         <button className="btn btn-primary ml-auto" onClick={onNext}>

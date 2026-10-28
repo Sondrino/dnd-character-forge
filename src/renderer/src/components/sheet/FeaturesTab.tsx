@@ -27,7 +27,7 @@ export function FeaturesTab() {
         {[...bySource.entries()].map(([src, list]) => (
           <Section key={src} title={src}>
             <div className="space-y-2">
-              {list.map((f) => (
+              {[...list].sort((a, b) => (a.level ?? 0) - (b.level ?? 0)).map((f) => (
                 <FeatureCard key={f.key} f={f} />
               ))}
             </div>
@@ -126,5 +126,5 @@ function FeatureCard({ f }: { f: DerivedFeature }) {
 }
 
 export function rechargeLabel(r: Uses['recharge']): string {
-  return { short: 'Short Rest', long: 'Long Rest', turn: 'Turn', dawn: 'Dawn', shortOrLong: 'Short/Long Rest' }[r] ?? r
+  return { short: 'Short Rest', long: 'Long Rest', turn: 'Turn', dawn: 'Dawn', shortOrLong: 'Short/Long Rest', shortOne: 'Long Rest (1 on Short)' }[r] ?? r
 }

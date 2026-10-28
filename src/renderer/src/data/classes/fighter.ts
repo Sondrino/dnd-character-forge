@@ -128,7 +128,7 @@ Whenever you gain a Fighter level, you can replace the feat you chose with a dif
 You can use this feature twice. You regain one expended use when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.
 
 When you reach certain Fighter levels, you gain more uses of this feature, as shown in the Second Wind column of the Fighter Features table.`,
-      uses: { count: 'Second Wind', recharge: 'long' },
+      uses: { count: 'Second Wind', recharge: 'shortOne' },
       activation: 'bonus'
     },
     {

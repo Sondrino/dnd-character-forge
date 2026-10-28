@@ -40,6 +40,8 @@ export interface DerivedFeature {
 }
 
 export interface DerivedAttack {
+  /** Skade for ekstra-angrepet med Light-våpen: uten positiv ability-modifier, men med magisk bonus */
+  offhandDamage?: string
   key: string
   name: string
   kind: 'weapon' | 'unarmed' | 'spell'
@@ -117,6 +119,8 @@ export interface Derived {
   size: string
   carry: { weight: number; capacity: number; dragLift: number }
   weaponMasteryMax: number
+  /** Spellcasting for spells fra feats/species (Magic Initiate, lineages): kilde → evne, DC og angrep */
+  spellSources: Record<string, { ability: Ability; mod: number; dc: number; attack: number }>
   attunedCount: number
   armorWorn?: ArmorDef
   shieldWorn: boolean
@@ -284,7 +288,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
       const key = `class:${def.id}:${f.id}`
       features.push({
         key, id: f.id, name: f.name, source: `${def.name} ${f.level ?? 1}`, sourceType: 'class', level: f.level,
-        summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, duration: f.duration,
+        summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, toggle: f.toggle, duration: f.duration,
         uses: undefined
       })
       addEffects(f.effects, `${def.name}: ${f.name}`, ce.level)
@@ -296,7 +300,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
         const key = `subclass:${sub.id}:${f.id}`
         features.push({
           key, id: f.id, name: f.name, source: `${sub.name} ${f.level ?? def.subclassLevel}`, sourceType: 'subclass', level: f.level,
-          summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, duration: f.duration,
+          summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, toggle: f.toggle, duration: f.duration,
           uses: undefined
         })
         addEffects(f.effects, `${sub.name}: ${f.name}`, ce.level)
@@ -586,7 +590,8 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     if (!u) return undefined
     const max = evalFormula(u.count, { mods: mods ?? ({} as never), pb: P, level, totalLevel, columns })
     if (max === null) return undefined
-    return { max: Math.max(1, max), used: char.featureUses?.[key] ?? 0, recharge: u.recharge }
+    const recharge = u.shortFrom && level >= u.shortFrom ? 'shortOrLong' : u.recharge
+    return { max: Math.max(1, max), used: char.featureUses?.[key] ?? 0, recharge }
   }
   // Bruk (uses) regnes ut etter at modifiers er kjent
   recomputeUses()
@@ -690,6 +695,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     v += exhaustionPenalty(bd)
     const s = { ...stat(v, bd), proficient: prof }
     s.advantage = [...eff(`save.${a}`, 'advantage'), ...eff('save.all', 'advantage')].map((e) => e.effect.note ?? e.source)
+    s.disadvantage = [...eff(`save.${a}`, 'disadvantage'), ...eff('save.all', 'disadvantage')].map((e) => e.effect.note ?? e.source)
     applyOverride(s, `save.${a}`)
     saves[a] = s
   }
@@ -715,12 +721,14 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     const expertise = skillExp.has(sk.id)
     const prof = expertise || skillProf.has(sk.id)
     let v = mods[a]
+    // Satt for hånd på arket (prikkene) merkes som egendefinert, så det skilles fra regel-kilder
+    const customSkill = (char.extra?.expertise ?? []).includes(sk.id) || (char.extra?.skills ?? []).includes(sk.id)
     if (expertise) {
       v += P * 2
-      bd.push(`Expertise: ${signed(P * 2)}`)
+      bd.push(`${customSkill && (char.extra?.expertise ?? []).includes(sk.id) ? 'Custom expertise' : 'Expertise'}: ${signed(P * 2)}`)
     } else if (prof) {
       v += P
-      bd.push(`Proficiency: ${signed(P)}`)
+      bd.push(`${customSkill ? 'Custom proficiency' : 'Proficiency'}: ${signed(P)}`)
     } else if (jackOfAllTrades) {
       const h = Math.floor(P / 2)
       v += h
@@ -729,8 +737,8 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     v += sumAdd([`skill.${sk.id}`, 'skill.all', `check.${a}`, 'check.all'], bd)
     v += exhaustionPenalty(bd)
     const s = { ...stat(v, bd), proficient: prof, expertise, ability: a }
-    s.advantage = [...eff(`skill.${sk.id}`, 'advantage'), ...eff(`check.${a}`, 'advantage')].map((e) => e.effect.note ?? e.source)
-    s.disadvantage = eff(`skill.${sk.id}`, 'disadvantage').map((e) => e.effect.note ?? e.source)
+    s.advantage = [...eff(`skill.${sk.id}`, 'advantage'), ...eff('skill.all', 'advantage'), ...eff(`check.${a}`, 'advantage'), ...eff('check.all', 'advantage')].map((e) => e.effect.note ?? e.source)
+    s.disadvantage = [...eff(`skill.${sk.id}`, 'disadvantage'), ...eff('skill.all', 'disadvantage'), ...eff(`check.${a}`, 'disadvantage'), ...eff('check.all', 'disadvantage')].map((e) => e.effect.note ?? e.source)
     if (sk.id === 'stealth' && armorDef?.stealthDisadvantage) s.disadvantage.push(`${armorDef.name}`)
     applyOverride(s, `skill.${sk.id}`)
     skillsOut[sk.id] = s
@@ -814,6 +822,11 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
   applyOverride(acStat, 'ac')
 
   const armorNotProficient = (!!armorDef && !armorProf.has(armorDef.category)) || (!!wornShield && !armorProf.has('shield'))
+  if (armorNotProficient) {
+    const why = `${armorDef && !armorProf.has(armorDef.category) ? armorDef.name : 'Shield'} (no training)`
+    for (const ab of ['str', 'dex'] as const) saves[ab].disadvantage = [...(saves[ab].disadvantage ?? []), why]
+    for (const sk of SKILLS) if (sk.ability === 'str' || sk.ability === 'dex') skillsOut[sk.id].disadvantage = [...(skillsOut[sk.id].disadvantage ?? []), why]
+  }
   const strengthTooLow = !!armorDef?.strength && abilities.str.score.value < armorDef.strength
 
   /* ---------- Speed ---------- */
@@ -849,6 +862,15 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     // Exhaustion senker alle bevegelsestyper (lik Speed er allerede redusert)
     if (v && exhaustionLevel && !fromSpeed) v = Math.max(0, v - 5 * exhaustionLevel)
     if (v) speedStat[m] = v
+  }
+  // Grappled, Restrained, Paralyzed, Petrified, Stunned og Unconscious: Speed 0 (2024)
+  {
+    const zero = (char.conditions ?? []).find((c) => ['grappled', 'restrained', 'paralyzed', 'petrified', 'stunned', 'unconscious'].includes(c))
+    if (zero) {
+      speedStat.value = speedStat.computed = 0
+      speedStat.breakdown.push(`${zero[0].toUpperCase()}${zero.slice(1)}: Speed 0`)
+      for (const m of ['fly', 'swim', 'climb', 'burrow'] as const) if (speedStat[m]) speedStat[m] = 0
+    }
   }
   applyOverride(speedStat, 'speed')
 
@@ -1011,7 +1033,9 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     if (w.versatile) notes.push(`Versatile (${w.versatile}${dmgMod ? signed(dmgMod) : ''} two-handed)`)
     if (!proficient) notes.push('Not proficient')
     const name = r.magic ? `${r.magic.name}` : r.item.name || w.name
+    const offMod = dmgMod - Math.max(0, mods[ab])
     attacks.push({
+      offhandDamage: offMod ? `${die}${signed(offMod)}` : die,
       key: r.item.uid, name: name.includes(w.name) ? name : `${name} (${w.name})`, kind: 'weapon', bonus, damage, damageType: w.damageType,
       properties: w.properties, range: w.range ? `${w.range} ft.` : w.properties.includes('reach') ? '10 ft.' : '5 ft.',
       mastery: w.mastery, masteryActive: (char.weaponMasteries ?? []).includes(w.id), proficient, notes, refId: w.id, inventoryUid: r.item.uid
@@ -1028,11 +1052,33 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     const dmg = martialArtsDie ? `${martialArtsDie}${signed(mods[ab])}` : `${Math.max(0, 1 + mods[ab])}`
     attacks.push({ key: 'unarmed', name: 'Unarmed Strike', kind: 'unarmed', bonus, damage: dmg, damageType: 'bludgeoning', properties: [], range: '5 ft.', masteryActive: false, proficient: true, notes: [] })
   }
+  // Spellcasting ability for spells fra feats (Magic Initiate o.l.) og species-lineages
+  const spellSources: Derived['spellSources'] = {}
+  {
+    const isCast = (v: unknown): v is Ability => v === 'int' || v === 'wis' || v === 'cha'
+    const speciesAb = Object.entries(char.choices ?? {}).find(([k, v]) => k.startsWith('species') && v.length === 1 && isCast(v[0]))?.[1][0] as Ability | undefined
+    for (const cs of char.spells ?? []) {
+      if (spellSources[cs.source]) continue
+      let ab: Ability | undefined
+      if (cs.source.startsWith('feat:')) {
+        const cf = (char.feats ?? []).find((f) => `feat:${f.uid}` === cs.source)
+        const v = cf?.choices?.ability?.[0]
+        ab = isCast(v) ? v : undefined
+      } else if (cs.source === 'species') ab = speciesAb
+      if (!ab) continue
+      const dcBd: string[] = []
+      const atBd: string[] = []
+      const dc = 8 + P + mods[ab] + sumAdd(['spell.dc'], dcBd)
+      const attack = P + mods[ab] + sumAdd(['spell.attack', 'attack.spell'], atBd) + exhaustionPenalty(atBd)
+      spellSources[cs.source] = { ability: ab, mod: mods[ab], dc, attack }
+    }
+  }
   // Damage cantrips og angreps-spells
   for (const cs of char.spells ?? []) {
     const sp = L.get('spell', cs.spellId) as SpellDef | undefined
     if (!sp || !sp.damage || (sp.level > 0 && !cs.prepared && !cs.alwaysPrepared)) continue
-    const caster = spellcasting.find((s) => s.classId === cs.source) ?? bestCaster(spellcasting, mods, P)
+    const src = spellSources[cs.source]
+    const caster = spellcasting.find((s) => s.classId === cs.source) ?? (src ? { ...bestCaster([], mods, P), ability: src.ability, mod: src.mod, dc: stat(src.dc), attack: stat(src.attack) } : bestCaster(spellcasting, mods, P))
     let dice = sp.damage.dice
     const spellNotes: string[] = []
     const mult = totalLevel >= 17 ? 4 : totalLevel >= 11 ? 3 : totalLevel >= 5 ? 2 : 1
@@ -1105,6 +1151,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     slots,
     pact,
     attacks,
+    spellSources,
     features,
     proficiencies: { armor: [...armorProf], weapons: [...weaponProf], tools: [...toolProf], languages: [...langs] },
     resistances: grants('resistance'),

@@ -9,13 +9,14 @@ export const en: typeof nb = {
     level: 'Level', loading: 'Loading…', name: 'Name', next: 'Next', noResults: 'No results', save: 'Save', search: 'Search…', unnamed: 'Unnamed'
   },
   home: {
+    trash: 'Recently deleted ({{n}})', trashHint: 'Deleted characters stay here for 30 days.', restore: 'Restore', restored: '{{name}} restored', 
     tagline: 'Build, level and play D&D characters with the 2024 rules – all the rules data, dice and tips in one place.',
     new: 'New character', newHint: 'Step-by-step builder', import: 'Import', export: 'Export', imported: '{{n}} character(s) imported',
     empty: 'No characters yet – create your first hero!', build: 'Builder', duplicate: 'Duplicate', todo: '{{n}} to do',
     deleteTitle: 'Delete character?', deleteText: 'Are you sure you want to delete {{name}}? This cannot be undone.'
   },
   tabs: { adjust: 'Custom values', sheet: 'Sheet', spells: 'Spells', inventory: 'Inventory', features: 'Features & choices', details: 'Details', custom: 'Custom' },
-  char: { builderTip: 'Change class, species, background, ability scores, equipment and more', adjust: 'Custom values', adjustTip: 'Adjust or override any value for a custom game', levelDown: 'Level down', notFound: 'Character not found.', builder: 'Edit', levelUp: 'Level up' },
+  char: { undone: 'Undone', redone: 'Redone', undoTip: 'Undo (Ctrl+Z)', redoTip: 'Redo (Ctrl+Y)', builderTip: 'Change class, species, background, ability scores, equipment and more', adjust: 'Custom values', adjustTip: 'Adjust or override any value for a custom game', levelDown: 'Level down', notFound: 'Character not found.', builder: 'Edit', levelUp: 'Level up' },
   info: { thirdPartyNote: 'Third-party content from {{book}}, used under the {{license}} license. It is not official D&D content – ask your DM whether it is allowed. See “Open Content Licenses” in the Compendium.', supplementNote: 'Official supplement: {{book}}. This is only a short summary in our own words – the full text is in the book or on D&D Beyond.',
     aka: 'In the Player’s Handbook: {{names}}', more: 'More info', openDdb: 'Open on D&D Beyond', phbNote: 'This is a short summary in our own words. Read the full rules text in the {{book}} or on D&D Beyond.',
     addInventory: 'Add to inventory', owned: 'Own {{n}}', addSpell: 'Add spell', known: 'Known', addFeat: 'Add feat', hasFeat: 'Already have',
@@ -27,6 +28,7 @@ export const en: typeof nb = {
   },
   stat: { custom: 'Custom adjustment', editTitle: 'Edit value', auto: 'Automatically calculated', adjustment: 'Custom adjustment (+/−)', adjustmentHint: 'Added on top of the calculation – still updates automatically.', fixed: 'Fixed value (optional)', fixedPlaceholder: 'Empty = automatic', fixedHint: 'Replaces the whole calculation. Leave empty to use automation.', resetAll: 'Reset to automatic', advantage: 'Advantage', disadvantage: 'Disadvantage', overridden: 'Set manually (computed: {{v}})', reset: 'Reset', edit: 'Edit or adjust value' },
   sheet: {
+    stable: 'Stable at 0 HP', dead: 'Dead', 
     exhaustionEffect: '−{{d}} to D20 Tests · −{{s}} ft. Speed · a long rest removes 1 level', exhaustionDead: 'Exhaustion 6 – the character dies.', 
     unarmored: 'Unarmored', initiative: 'Initiative', speed: 'Speed', passivePerception: 'Passive Perc.', inspiration: 'Inspiration',
     size: 'Size', passiveInsight: 'Passive Insight', passiveInvestigation: 'Passive Investigation', hitPoints: 'Hit Points', max: 'Max',
@@ -39,6 +41,7 @@ export const en: typeof nb = {
     activeStates: 'Active states (toggle effects)'
   },
   spells: {
+    castFree: '{{name}} cast for free ({{via}})', 
     ability: 'Ability', dc: 'Save DC', attack: 'Spell attack', cantrips: 'Cantrips', prepared: 'Prepared', maxLevel: 'Highest spell level: {{n}}',
     addCantrip: 'Choose cantrips', addSpell: 'Choose spells', slots: 'Spell slots', noSlots: 'No spell slots.', shortRest: 'Short rest',
     resetSlots: 'Reset slots', addAny: 'Add a spell from any list', empty: 'No spells yet',
@@ -76,6 +79,11 @@ export const en: typeof nb = {
     pickBackgroundFirst: 'Choose a background first.', bgTotal: 'Used {{n}} of 3 points', addFeat: 'Add {{name}}', pickFeat: 'Choose feat',
     pickMastery: 'Choose Weapon Mastery weapons'
   },
+  sort: {
+    title: 'Sort', name: 'Name A–Z', nameDesc: 'Name Z–A', book: 'Book', level: 'Spell level', school: 'School', rarity: 'Rarity', type: 'Type', cr: 'Challenge rating',
+    category: 'Category', damage: 'Damage (highest first)', cost: 'Cost (lowest first)', weight: 'Weight (lightest first)', ac: 'AC', class: 'Class', pantheon: 'Pantheon', kind: 'Type',
+    recent: 'Recently changed', charLevel: 'Level (highest first)', manual: 'Order added', equipped: 'In use first', value: 'Value (highest first)'
+  },
   picker: { books: 'Books:', allBooks: 'All books', booksHint: 'Click a book to show only that one. Click more to add them. Your choice is remembered.', clearBooks: 'Show all books ({{n}} hidden)', showMore: 'Show more ({{n}} left) – or search to narrow down', selected: 'Selected {{n}} of {{max}}' },
   tips: { title: 'Tips & to-do', warning: 'Warnings', todo: 'To do', suggestion: 'Suggestions', info: 'Info', fix: 'Fix this', none: 'No tips – everything looks good! ✦' },
   level: { downTitle: 'Level down', downDone: 'Level removed', downConfirm: 'Remove level', downMin: 'The character is already level 1.', downIntro: 'Choose which class loses a level. Choices tied to that level are removed.', downFeatures: 'Features removed', downFeats: 'Feats removed', downSubclass: 'Subclass removed: {{name}}', downClass: 'The class is removed entirely (multiclass)', downNote: 'Spells and equipment are kept – check the Spells tab afterwards.', undo: 'Undo level up',
@@ -86,6 +94,7 @@ export const en: typeof nb = {
     newChoices: 'New choices to make', spellsHint: 'Remember to check the Spells tab for new cantrips/spells.'
   },
   rest: {
+    needHp: 'You need at least 1 HP to start a rest (2024). Get healed or stabilised first – or continue if your DM allows it.', 
     short: 'Short Rest (1 hour)', long: 'Long Rest (8 hours)', shortBtn: 'Short', longBtn: 'Long', take: 'Take rest', spend: 'Spend',
     shortText: 'Spend Hit Dice to regain HP. Short-rest features and Pact Magic slots recharge.',
     longText: 'Regain all HP, all Hit Dice and spell slots. Features recharge and Exhaustion drops by 1.',
@@ -125,9 +134,35 @@ export const en: typeof nb = {
     new: 'New homebrew', edit: 'Edit {{name}}', copyFrom: 'Copy from existing', type: 'Type', summary: 'Short description',
     summaryHint: 'Shown in the small popup', editText: 'Edit', preview: 'Preview', effects: 'Effects (update the sheet automatically)',
     effectsHint: 'E.g. AC +1, Speed +10, advantage on Stealth, fire resistance…', addEffect: 'Add effect', condition: 'Condition (optional)',
-    noEffects: 'No effects', intro: 'A shared library of your own items, spells and feats, usable by all your characters.',
+    noEffects: 'No effects', intro: 'A shared library of your own subclasses, species, backgrounds, feats, spells, items, monsters and more – usable by all your characters and easy to share.',
     empty: 'The library is empty', emptyText: 'Create homebrew here, or save from a character’s Custom tab.', effectCount: '{{n}} effect(s)',
-    imported: '{{n}} imported', importFail: 'Could not read the file'
+    imported: '{{n}} imported', importFail: 'Could not read the file',
+    featuresHint: 'Click a feature to edit it: level, uses, effects and what it does in combat.', addFeature: 'Add feature', editFeature: 'Edit feature', noFeatures: 'No features yet.',
+    subclassHint: '{{cls}} chooses a subclass at level {{lvl}}. Features show on the sheet from the level you set and can be used in combat mode.',
+    subclassFeatures: 'Subclass features', alwaysPrepared: 'Always-prepared spells', alwaysPreparedHint: 'E.g. domain or oath spells. Added automatically from the class level you choose.',
+    addSpellLevel: 'Add level', classLevel: 'Class level', noSpells: 'No spells.', traits: 'Traits', speciesSpells: 'Innate spells',
+    speciesSpellsHint: 'Granted automatically from the character level you choose, and can be cast free once per long rest in combat mode.', charLevel: 'Character level',
+    bgAbilities: 'Ability scores (pick 3 – {{n}} picked)', toolChoice: 'Choice: {{what}}', bgSkills: 'Skill proficiencies (pick 2 – {{n}} picked)', equipment: 'Starting equipment', addItems: 'Add equipment',
+    statBlock: 'Stat block (traits, actions …)', statBlockPh: '**Traits.** …\n\n### Actions\n**Bite.** Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8 + 2) Piercing damage.',
+    err: { name: 'Name is missing', abilities: 'Pick exactly 3 ability scores', skills: 'Pick exactly 2 skills', class: 'Pick a class' },
+    importTip: 'Import homebrew from a .json file (from a friend or another PC)', exportTip: 'Save the whole library as one shareable file',
+    duplicated: '{{name}} duplicated', editShort: 'Edit', duplicate: 'Duplicate', exportOne: 'Export this as a file',
+    chooseKind: 'What do you want to create?', deleteTitle: 'Delete?', deleteText: '{{name}} will be removed from the library. Characters using it will lose it.',
+    kindDesc: {
+      subclass: 'Your own subclass for a class – with features per level and always-prepared spells.',
+      species: 'Your own species with size, speed, darkvision, traits and innate spells.',
+      background: 'Your own background with ability scores, origin feat, skills, tool and equipment.',
+      feat: 'Origin, general, fighting style or epic boon – with effects.',
+      spell: 'Your own spell with damage, save, attack and classes.',
+      magicItem: 'Magic item with rarity, attunement, bonus and effects.',
+      weapon: 'Weapon with damage, properties and mastery.',
+      armor: 'Armor or shield with AC.',
+      gear: 'Gear, equipment or other things.',
+      tool: 'Tool or instrument.',
+      creature: 'Monster, companion or familiar with a stat block – can be added in combat mode.',
+      language: 'A language for your world.'
+    },
+    useHint: { subclass: 'pick at level up / in the builder', species: 'pick in the builder', background: 'pick in the builder', creature: 'used in combat mode' }
   },
   settings: { showSupplements: 'Show supplement content (Xanathar’s, Tasha’s …)', showThirdParty: 'Show third-party content (Kobold Press, Level Up A5E …)', sourcesHint: 'Hidden sources disappear from lists and pickers. Characters already using them are not affected.',
     appearance: 'Appearance', language: 'Language', theme: 'Theme', dark: 'Dark', light: 'Light', animations: 'Animations', diceSound: 'Dice sound',

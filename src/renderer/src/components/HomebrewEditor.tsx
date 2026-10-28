@@ -8,9 +8,15 @@ import { ABILITIES } from '../types'
 import { Modal, Markdown } from './ui'
 import { EntityPicker } from './EntityPicker'
 import { skills } from '../data/skills'
+import { BackgroundForm, CreatureForm, LanguageForm, SpeciesForm, SubclassForm, validateHomebrew } from './homebrew/KindForms'
 
-export const HOMEBREW_KINDS: EntityKind[] = ['gear', 'weapon', 'armor', 'magicItem', 'spell', 'feat', 'tool']
-export const KIND_NAMES: Record<string, string> = { gear: 'Item / Gear', weapon: 'Weapon', armor: 'Armor', magicItem: 'Magic Item', spell: 'Spell', feat: 'Feat', tool: 'Tool' }
+export const HOMEBREW_KINDS: EntityKind[] = ['subclass', 'species', 'background', 'feat', 'spell', 'magicItem', 'weapon', 'armor', 'gear', 'tool', 'creature', 'language']
+export const KIND_NAMES: Record<string, string> = {
+  gear: 'Item / Gear', weapon: 'Weapon', armor: 'Armor', magicItem: 'Magic Item', spell: 'Spell', feat: 'Feat', tool: 'Tool',
+  subclass: 'Subclass', species: 'Species', background: 'Background', creature: 'Creature / Monster', language: 'Language'
+}
+/** Typer der entity-effektene brukes direkte (subclass/species-traits har egne effekter per feature) */
+const KINDS_WITH_EFFECTS = new Set(['gear', 'weapon', 'armor', 'magicItem', 'feat', 'tool', 'species'])
 
 const DAMAGE: DamageType[] = ['acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder']
 const PROPS: WeaponProperty[] = ['ammunition', 'finesse', 'heavy', 'light', 'loading', 'reach', 'thrown', 'two-handed', 'versatile']
@@ -70,27 +76,46 @@ export function blankEntity(kind: EntityKind): AnyEntity {
       return { ...base, kind, category: 'general' }
     case 'tool':
       return { ...base, kind, category: 'other', ability: 'int', utilize: [], craft: [], cost: '10 GP', weight: 1 }
+    case 'subclass':
+      return { ...base, kind, classId: 'fighter', features: [], alwaysPrepared: [] }
+    case 'species':
+      return { ...base, kind, creatureType: 'Humanoid', size: 'Medium', speed: 30, traits: [], spells: [] }
+    case 'background':
+      return {
+        ...base, kind, abilityScores: ['str', 'dex', 'con'], originFeat: 'alert', skills: ['athletics', 'perception'], tool: 'choice:gaming',
+        equipment: [{ label: 'A', items: [], gp: 15 }, { label: 'B', items: [], gp: 50 }]
+      }
+    case 'creature':
+      return { ...base, kind, size: 'Medium', creatureType: 'Beast', alignment: 'Unaligned', ac: 12, hp: '11 (2d8 + 2)', speed: '30 ft.', cr: '1/4', abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 } }
+    case 'language':
+      return { ...base, kind, rarity: 'standard' }
     default:
       return { ...base, kind: 'gear', cost: '1 GP', weight: 1 } as AnyEntity
   }
 }
 
 export function EntityEditor({
-  open, onClose, initial, onSave, existingIds
+  open, onClose, initial, onSave, existingIds, initialKind = 'gear'
 }: {
   open: boolean
   onClose: () => void
   initial: AnyEntity | null
   onSave: (e: AnyEntity) => void
   existingIds?: string[]
+  /** Type for nye entities (fra typevelgeren) */
+  initialKind?: EntityKind
 }) {
   const { t } = useTranslation()
-  const [e, setE] = useState<AnyEntity>(initial ?? blankEntity('gear'))
+  const [e, setE] = useState<AnyEntity>(initial ?? blankEntity(initialKind))
   const [copyFrom, setCopyFrom] = useState(false)
   const [preview, setPreview] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    if (open) setE(initial ?? blankEntity('gear'))
-  }, [open, initial])
+    if (open) {
+      setE(initial ?? blankEntity(initialKind))
+      setError(null)
+    }
+  }, [open, initial, initialKind])
   const set = (p: Record<string, unknown>): void => setE((x) => ({ ...x, ...p }) as AnyEntity)
   const isNew = !initial?.id
   const a = e as unknown as Record<string, unknown>
@@ -109,10 +134,16 @@ export function EntityEditor({
           <button className="btn" onClick={onClose}>
             {t('common.cancel')}
           </button>
+          {error && <span className="self-center text-sm text-bad">{t(error)}</span>}
           <button
             className="btn btn-primary"
             disabled={!e.name.trim()}
             onClick={() => {
+              const err = validateHomebrew(e)
+              if (err) {
+                setError(err)
+                return
+              }
               let id = e.id || `hb-${slugify(e.name)}`
               if (isNew && existingIds?.includes(id)) id = `${id}-${Date.now().toString(36).slice(-4)}`
               onSave({ ...e, id, source: 'Homebrew', summary: e.summary || e.description.split('\n')[0].slice(0, 180) } as AnyEntity)
@@ -239,6 +270,11 @@ export function EntityEditor({
             <Sel label="+1 ability" v={(a.abilityIncrease as { options: string[] } | undefined) ? 'yes' : 'no'} o={['no', 'yes']} on={(v) => set({ abilityIncrease: v === 'yes' ? { options: ABILITIES, amount: 1 } : undefined })} />
           </div>
         )}
+        {e.kind === 'subclass' && <SubclassForm e={e} set={set} />}
+        {e.kind === 'species' && <SpeciesForm e={e} set={set} />}
+        {e.kind === 'background' && <BackgroundForm e={e} set={set} />}
+        {e.kind === 'creature' && <CreatureForm e={e} set={set} />}
+        {e.kind === 'language' && <LanguageForm e={e} set={set} />}
         {(e.kind === 'gear' || e.kind === 'tool') && (
           <div className="grid grid-cols-3 gap-3">
             <Txt label="Cost" v={a.cost} on={(v) => set({ cost: v })} />
@@ -249,7 +285,7 @@ export function EntityEditor({
 
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <label className="label">{t('common.description')} (Markdown)</label>
+            <label className="label">{e.kind === 'creature' ? t('hb.statBlock') : t('common.description')} (Markdown)</label>
             <button className="btn btn-ghost btn-sm" onClick={() => setPreview(!preview)}>
               {preview ? t('hb.editText') : t('hb.preview')}
             </button>
@@ -259,20 +295,25 @@ export function EntityEditor({
               <Markdown text={e.description} />
             </div>
           ) : (
-            <textarea className="input min-h-32 font-serif text-[15px]" value={e.description} onChange={(ev) => set({ description: ev.target.value })} />
+            <textarea
+              className="input min-h-32 font-serif text-[15px]"
+              value={e.description}
+              placeholder={e.kind === 'creature' ? t('hb.statBlockPh') : ''}
+              onChange={(ev) => set({ description: ev.target.value })}
+            />
           )}
         </div>
-        <EffectsEditor effects={e.effects ?? []} onChange={(effects) => set({ effects })} />
+        {KINDS_WITH_EFFECTS.has(e.kind) && <EffectsEditor effects={e.effects ?? []} onChange={(effects) => set({ effects })} />}
       </div>
       <EntityPicker
         open={copyFrom}
         onClose={() => setCopyFrom(false)}
-        kinds={HOMEBREW_KINDS}
+        kinds={isNew ? [e.kind] : HOMEBREW_KINDS}
         title={t('hb.copyFrom')}
         groupBy={(x) => KIND_NAMES[x.kind] ?? x.kind}
         onConfirm={(_ids, ents) => {
           const src = ents[0]
-          if (src) setE({ ...JSON.parse(JSON.stringify(src)), id: '', name: `${src.name} (homebrew)`, source: 'Homebrew' })
+          if (src) setE({ ...JSON.parse(JSON.stringify(src)), id: '', name: `${src.name} (homebrew)`, source: 'Homebrew', sourceBook: undefined, license: undefined })
         }}
       />
     </Modal>

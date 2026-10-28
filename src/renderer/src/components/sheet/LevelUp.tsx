@@ -14,6 +14,7 @@ import { abilityNames } from '../../data/skills'
 import { EntityLink } from '../EntityInfo'
 import type { ClassDef } from '../../types'
 import { levelDown, previewLevelDown } from '../../lib/levels'
+import { meetsMulticlass } from '../../lib/rules'
 import { useUi } from '../../store/ui'
 
 export function LevelUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -45,7 +46,8 @@ export function LevelUpModal({ open, onClose }: { open: boolean; onClose: () => 
   const conMod = d.abilities.con.mod
   const hpGain = Math.max(1, (method === 'roll' && hpRoll !== null ? hpRoll : averageHitDie(cls?.hitDie ?? 8)) + conMod)
   const allClasses = L.all('class').sort((a, b) => a.name.localeCompare(b.name))
-  const meetsPrereq = (c: ClassDef): boolean => c.primaryAbility.some((a) => d.abilities[a].score.value >= 13)
+  // Fighter: STR eller DEX; Monk, Paladin og Ranger: begge sine (PHB 2024)
+  const meetsPrereq = (c: ClassDef): boolean => meetsMulticlass(c, d)
   const currentMeet = char.classes.every((ce) => {
     const c = L.get('class', ce.classId)
     return !c || meetsPrereq(c)

@@ -5,6 +5,8 @@ interface Api {
   listCharacters(): Promise<unknown[]>
   saveCharacter(c: unknown): Promise<boolean>
   deleteCharacter(id: string): Promise<boolean>
+  trashList(): Promise<{ file: string; name: string; deletedAt: number }[]>
+  restoreCharacter(file: string): Promise<unknown>
   exportCharacter(c: unknown): Promise<boolean>
   importCharacters(): Promise<unknown[]>
   storeGet(key: string): Promise<unknown>
@@ -34,6 +36,12 @@ const fallback: Api = {
   async deleteCharacter(id) {
     localStorage.removeItem(`${LS}char:${id}`)
     return true
+  },
+  async trashList() {
+    return []
+  },
+  async restoreCharacter() {
+    return null
   },
   async exportCharacter(c) {
     const blob = new Blob([JSON.stringify(c, null, 2)], { type: 'application/json' })

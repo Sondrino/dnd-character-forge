@@ -9,6 +9,8 @@ import { InfoPopover, entityFacts, openDndBeyond } from '../components/EntityInf
 import { SourceBadge } from '../components/ui'
 import { matchesQuery } from '../lib/search'
 import { groupEntities } from '../lib/compendiumGroups'
+import { sortEntities, sortOptions } from '../lib/sorting'
+import { SortSelect, useSortChoice } from '../components/SortSelect'
 import { BookFilterBar, BookFilterReset, useBookFilter } from '../components/BookFilter'
 
 const KINDS: { kind: EntityKind; label: string }[] = [
@@ -46,7 +48,9 @@ export default function Compendium() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const all = useMemo(() => L.all(kind).sort((a, b) => ((a as SpellDef).level ?? 0) - ((b as SpellDef).level ?? 0) || a.name.localeCompare(b.name)), [L, kind])
+  const sortOpts = sortOptions(kind)
+  const [sortId, setSortId] = useSortChoice(`compendium:${kind}`, sortOpts[0].id)
+  const all = useMemo(() => sortEntities(L.all(kind), kind, sortId), [L, kind, sortId])
   const filters = filterDefs(kind, all, L)
   const bf = useBookFilter(`compendium:${kind}`, all)
   const shown = bf.filtered.filter((e) => {
@@ -119,6 +123,7 @@ export default function Compendium() {
               ))}
             </select>
           )}
+          <SortSelect options={sortOpts} value={sortId} onChange={setSortId} className="w-52" />
           <span className="ml-auto text-sm text-muted">{t('comp.count', { n: shown.length })}</span>
           <BookFilterBar state={bf} className="w-full" />
         </div>

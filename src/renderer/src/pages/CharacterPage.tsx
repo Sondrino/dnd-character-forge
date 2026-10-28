@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ArrowUp, ArrowDown, Coffee, Download, FileText, Lightbulb, Moon, Wand2, Check, SlidersHorizontal, Swords } from 'lucide-react'
+import { ArrowLeft, ArrowUp, ArrowDown, Coffee, Download, FileText, Lightbulb, Moon, Wand2, Check, SlidersHorizontal, Swords, Undo2, Redo2 } from 'lucide-react'
 import { useCharacter, useUi } from '../store/ui'
 import { useCharacters } from '../store/characters'
 import { useSettings } from '../store/settings'
@@ -135,6 +135,7 @@ export default function CharacterPage() {
             </div>
           </div>
           <div className="ml-auto flex flex-wrap gap-2">
+            <UndoButtons id={char.id} />
             <motion.button
               whileHover={{ scale: 1.03 }}
               className={`btn ${char.combat ? 'glow border-crimson/60 text-crimson-2' : 'border-crimson/40'}`}
@@ -293,6 +294,11 @@ function applyRest(c: Character, kind: 'short' | 'long', d: Derived, hdSpent: Re
   for (const k of Object.keys(c.featureUses)) {
     const r = keys.get(k)
     if (kind === 'long' || r === 'short' || r === 'shortOrLong') delete c.featureUses[k]
+    // 2024: én bruk tilbake på short rest (Rage, Second Wind, Wild Shape, Channel Divinity)
+    else if (r === 'shortOne') {
+      c.featureUses[k] = Math.max(0, (c.featureUses[k] ?? 0) - 1)
+      if (!c.featureUses[k]) delete c.featureUses[k]
+    }
   }
   c.pactSlotsUsed = 0
   if (kind === 'long') {
@@ -322,7 +328,8 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
     setHealed(0)
   }, [kind])
   if (!kind) return <Modal open={false} onClose={onClose}>{null}</Modal>
-  const recharge = d.features.filter((f) => f.uses && f.uses.used > 0 && (kind === 'long' || f.uses.recharge === 'short' || f.uses.recharge === 'shortOrLong'))
+  const recharge = d.features.filter((f) => f.uses && f.uses.used > 0 && (kind === 'long' || f.uses.recharge === 'short' || f.uses.recharge === 'shortOrLong' || f.uses.recharge === 'shortOne'))
+  const slotsBack = (kind === 'long' && d.slots.some((s) => s.used)) || !!d.pact?.used
   return (
     <Modal
       open={!!kind}
@@ -352,6 +359,7 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
     >
       <div className="space-y-3 text-sm">
         <p className="text-muted">{kind === 'short' ? t('rest.shortText') : t('rest.longText')}</p>
+        {char.hp.current <= 0 && <p className="rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-bad">{t('rest.needHp')}</p>}
         {kind === 'short' && (
           <div className="rounded-xl border border-line-soft p-3">
             <div className="panel-title mb-2">{t('sheet.hitDice')}</div>
@@ -367,7 +375,7 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
                     disabled={left <= 0}
                     onClick={() => {
                       const r = 1 + Math.floor(Math.random() * h.die)
-                      const gain = Math.max(0, r + d.abilities.con.mod)
+                      const gain = Math.max(1, r + d.abilities.con.mod)
                       setHealed((x) => x + gain)
                       setSpent((s) => ({ ...s, [h.die]: (s[h.die] ?? 0) + 1 }))
                       notify(`d${h.die}: ${r} ${d.abilities.con.mod >= 0 ? '+' : ''}${d.abilities.con.mod} = ${gain} HP`, 'good')
@@ -381,13 +389,14 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
             {healed > 0 && <div className="mt-2 text-good">+{healed} HP</div>}
           </div>
         )}
-        {recharge.length > 0 && (
+        {(recharge.length > 0 || slotsBack) && (
           <div>
             <div className="panel-title mb-1">{t('rest.recharges')}</div>
             <div className="flex flex-wrap gap-1">
               {recharge.map((f) => (
                 <span key={f.key} className="chip">
                   {f.name}
+                  {kind === 'short' && f.uses?.recharge === 'shortOne' ? ' (+1)' : ''}
                 </span>
               ))}
               {kind === 'long' && d.slots.some((s) => s.used) && <span className="chip">Spell Slots</span>}
@@ -398,5 +407,22 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
         {void char}
       </div>
     </Modal>
+  )
+}
+
+/** Angre/gjør om (også Ctrl+Z / Ctrl+Y) */
+function UndoButtons({ id }: { id: string }) {
+  const { t } = useTranslation()
+  useCharacters((s) => s.historySeq)
+  const { undo, redo, canUndo, canRedo } = useCharacters.getState()
+  return (
+    <div className="flex">
+      <button className="btn rounded-r-none px-2" disabled={!canUndo(id)} onClick={() => undo(id)} title={t('char.undoTip')}>
+        <Undo2 size={15} />
+      </button>
+      <button className="btn rounded-l-none border-l-0 px-2" disabled={!canRedo(id)} onClick={() => redo(id)} title={t('char.redoTip')}>
+        <Redo2 size={15} />
+      </button>
+    </div>
   )
 }

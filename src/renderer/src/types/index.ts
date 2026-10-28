@@ -76,7 +76,10 @@ export interface Effect {
 export interface Uses {
   /** Tall, eller formel: 'prof' | 'mod.cha' | 'level' | 'mod.wis+0' (minst 1) */
   count: number | string
-  recharge: 'short' | 'long' | 'turn' | 'dawn' | 'shortOrLong'
+  /** 'shortOne' = alle på long rest, én bruk tilbake på short rest (Rage, Second Wind, Wild Shape, Channel Divinity – 2024) */
+  recharge: 'short' | 'long' | 'turn' | 'dawn' | 'shortOrLong' | 'shortOne'
+  /** Fra dette class-levelet lades den på short rest (Bardic Inspiration: Font of Inspiration på level 5) */
+  shortFrom?: number
 }
 
 /** Et valg en feature/class/species gir (skills, feats, cantrips, osv.) */
@@ -521,6 +524,8 @@ export interface CombatTurn {
   lightUsed?: string
   /** Ekstra-angrepet (Light/Nick/Dual Wielder) er brukt denne turen */
   offhandDone?: boolean
+  /** Sneak Attack er brukt denne turen */
+  sneakUsed?: boolean
 }
 
 /** Pågående kamp – lagres på karakteren så den overlever omstart */

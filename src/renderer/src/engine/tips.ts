@@ -3,6 +3,7 @@ import type { Derived } from './compute'
 import type { Lookup } from './lookup'
 import { abilityNames, skillById } from '../data/skills'
 import type { SkillId } from '../types'
+import { featPrereqProblems, featsAboveLevel, meetsMulticlass } from '../lib/rules'
 
 export interface Tip {
   id: string
@@ -40,6 +41,52 @@ export function computeTips(char: Character, d: Derived, L0: Lookup, lang: 'nb' 
           text: t('Du får samme skill fra to kilder. Bytt ut det ene valget med en annen skill (Features & valg).', 'You gain the same skill from two sources – replace one choice with another skill.')
         })
   }
+
+  /* ---------- Regelkontroller (2024) – advarsler, ikke sperrer, så husregler fortsatt er mulig ---------- */
+  {
+    const bb = Object.values(char.backgroundBonus ?? {}).filter((v): v is number => typeof v === 'number' && v > 0)
+    const sum = bb.reduce((s, v) => s + v, 0)
+    const legal = (sum === 3 && bb.every((v) => v <= 2) && bb.filter((v) => v === 2).length <= 1) || sum === 0
+    if (char.backgroundId && !legal)
+      tips.push({ id: 'bgbonus', level: 'warning', area: 'abilities', title: t('Ugyldig background-bonus', 'Invalid background bonus'), text: t(`Background gir +2/+1 eller +1/+1/+1 (totalt 3). Nå: ${bb.map((v) => `+${v}`).join('/')}.`, `A background gives +2/+1 or +1/+1/+1 (3 in total). Now: ${bb.map((v) => `+${v}`).join('/')}.`) })
+  }
+  for (const f of featsAboveLevel(char)) {
+    const def = L.get('feat', f.featId)
+    tips.push({ id: `featlevel:${f.uid}`, level: 'warning', area: 'feats', title: t(`${def?.name ?? f.featId} hører til et level du ikke har`, `${def?.name ?? f.featId} belongs to a level you don't have`), text: t('Featet kommer fra et class-level over ditt nåværende. Fjern det under Features & valg.', 'The feat comes from a class level above your current one. Remove it under Features & choices.') })
+  }
+  for (const ce of char.classes ?? []) {
+    const def = L.get('class', ce.classId)
+    if (def && ce.subclassId && ce.level < def.subclassLevel)
+      tips.push({ id: `subtooearly:${ce.classId}`, level: 'warning', area: 'class', title: t(`Subclass før level ${def.subclassLevel}`, `Subclass before level ${def.subclassLevel}`), text: t(`${def.name} får subclass på level ${def.subclassLevel}.`, `${def.name} gains a subclass at level ${def.subclassLevel}.`) })
+  }
+  if ((char.classes ?? []).length > 1)
+    for (const ce of char.classes) {
+      const def = L.get('class', ce.classId)
+      if (def && !meetsMulticlass(def, d))
+        tips.push({ id: `multiclass:${def.id}`, level: 'warning', area: 'class', title: t(`Multiclass-krav ikke oppfylt: ${def.name}`, `Multiclass prerequisite not met: ${def.name}`), text: t(`Multiclassing krever 13 i ${def.primaryAbility.map((a) => abilityNames[a]).join(def.id === 'fighter' ? ' eller ' : ' og ')} for hver av classene dine.`, `Multiclassing needs 13 in ${def.primaryAbility.map((a) => abilityNames[a]).join(def.id === 'fighter' ? ' or ' : ' and ')} for each of your classes.`) })
+    }
+  if (d.totalLevel > 20) tips.push({ id: 'level20', level: 'warning', title: t('Over level 20', 'Above level 20'), text: t('Karakterer kan ikke ha mer enn 20 levels totalt.', 'Characters can have at most 20 levels in total.') })
+  for (const cf of char.feats ?? []) {
+    const def = L.get('feat', cf.featId)
+    const miss = def ? featPrereqProblems(def, d) : []
+    if (miss.length) tips.push({ id: `featprereq:${cf.uid}`, level: 'warning', area: 'feats', title: t(`Forutsetning mangler: ${def!.name}`, `Prerequisite not met: ${def!.name}`), text: t(`Krever ${miss.join(', ')}.`, `Requires ${miss.join(', ')}.`), links: [{ kind: 'feat', id: def!.id, name: def!.name }] })
+  }
+  for (const sc of d.spellcasting) {
+    if (sc.preparedCount > sc.preparedMax && sc.preparedMax > 0)
+      tips.push({ id: `overprep:${sc.classId}`, level: 'warning', area: 'spells', title: t(`For mange prepared spells (${sc.className})`, `Too many prepared spells (${sc.className})`), text: t(`${sc.preparedCount} av maks ${sc.preparedMax}.`, `${sc.preparedCount} of max ${sc.preparedMax}.`) })
+    if (sc.cantripCount > sc.cantripsMax)
+      tips.push({ id: `overcantrip:${sc.classId}`, level: 'warning', area: 'spells', title: t(`For mange cantrips (${sc.className})`, `Too many cantrips (${sc.className})`), text: t(`${sc.cantripCount} av maks ${sc.cantripsMax}.`, `${sc.cantripCount} of max ${sc.cantripsMax}.`) })
+    const tooHigh = (char.spells ?? []).filter((s) => s.source === sc.classId && !s.alwaysPrepared).map((s) => L.get('spell', s.spellId)).filter((sp) => sp && sp.level > sc.maxSpellLevel)
+    if (tooHigh.length)
+      tips.push({ id: `spelllevel:${sc.classId}`, level: 'warning', area: 'spells', title: t(`Spells over ditt høyeste nivå (${sc.className})`, `Spells above your highest level (${sc.className})`), text: t(`Du kan kaste spells opp til level ${sc.maxSpellLevel}: ${tooHigh.map((x) => x!.name).join(', ')}.`, `You can cast spells up to level ${sc.maxSpellLevel}: ${tooHigh.map((x) => x!.name).join(', ')}.`) })
+  }
+  {
+    const twoHanded = (char.inventory ?? []).filter((it) => it.equipped).map((it) => L.item(it.baseId ?? it.refId)).find((w) => w?.kind === 'weapon' && (w as { properties: string[] }).properties.includes('two-handed'))
+    if (twoHanded && d.shieldWorn)
+      tips.push({ id: 'twohandshield', level: 'warning', area: 'equipment', title: t('Tohåndsvåpen og skjold', 'Two-handed weapon and shield'), text: t(`${twoHanded.name} krever to hender – du kan ikke angripe med det mens skjoldet er i bruk.`, `${twoHanded.name} needs two hands – you can't attack with it while using a shield.`) })
+  }
+  if ((char.weaponMasteries ?? []).length > d.weaponMasteryMax)
+    tips.push({ id: 'mastery', level: 'warning', area: 'equipment', title: t('For mange Weapon Masteries', 'Too many Weapon Masteries'), text: t(`${char.weaponMasteries.length} av maks ${d.weaponMasteryMax}.`, `${char.weaponMasteries.length} of max ${d.weaponMasteryMax}.`) })
 
   if (!char.classes?.length) tips.push({ id: 'noclass', level: 'todo', title: t('Velg en class', 'Choose a class'), text: t('Start med class – den bestemmer det meste av karakteren din.', 'Start with your class – it defines most of your character.') })
   if (!char.speciesId) tips.push({ id: 'nospecies', level: 'todo', title: t('Velg species', 'Choose a species'), text: '' })

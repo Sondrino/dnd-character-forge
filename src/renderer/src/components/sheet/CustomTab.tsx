@@ -30,9 +30,14 @@ export function CustomTab() {
       else c.customEntities.push(e)
     })
 
+  /** Typer som kan legges rett på karakteren (subclass/species/background velges i veiviseren eller ved level up) */
+  const usable = (e: AnyEntity): boolean => ['spell', 'feat', 'gear', 'weapon', 'armor', 'magicItem', 'tool', 'language'].includes(e.kind)
   const addToChar = (e: AnyEntity): void =>
     update((c) => {
-      if (e.kind === 'spell') {
+      if (!usable(e)) return
+      if (e.kind === 'language') {
+        if (!c.extra.languages.includes(e.id)) c.extra.languages.push(e.id)
+      } else if (e.kind === 'spell') {
         if (!c.spells.some((s) => s.spellId === e.id)) c.spells.push({ spellId: e.id, source: 'manual', prepared: true })
       } else if (e.kind === 'feat') c.feats.push({ uid: uid(), featId: e.id, source: 'manual' })
       else c.inventory.push({ uid: uid(), refId: e.id, qty: 1, equipped: false, attuned: false })
@@ -118,12 +123,13 @@ export function CustomTab() {
           ) : (
             <div className="divide-y divide-line-soft">
               {char.customEntities.map((e) => {
-                const used = e.kind === 'spell' ? char.spells.some((s) => s.spellId === e.id) : e.kind === 'feat' ? char.feats.some((f) => f.featId === e.id) : char.inventory.some((i) => i.refId === e.id)
+                const used = !usable(e) || (e.kind === 'spell' ? char.spells.some((s) => s.spellId === e.id) : e.kind === 'feat' ? char.feats.some((f) => f.featId === e.id) : e.kind === 'language' ? char.extra.languages.includes(e.id) : char.inventory.some((i) => i.refId === e.id))
                 return (
                   <div key={`${e.kind}:${e.id}`} className="flex items-center gap-3 py-2">
                     <span className="chip">{KIND_NAMES[e.kind] ?? e.kind}</span>
                     <EntityLink kind={e.kind} id={e.id} entity={e} className="font-medium" />
                     <span className="truncate text-xs text-muted">{e.summary}</span>
+                    {!usable(e) && <span className="shrink-0 text-[10px] text-faint">{t(`hb.useHint.${e.kind}`, { defaultValue: '' })}</span>}
                     <div className="ml-auto flex gap-1">
                       {!used && (
                         <button className="btn btn-sm" onClick={() => addToChar(e)}>

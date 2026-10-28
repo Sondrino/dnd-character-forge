@@ -132,7 +132,7 @@ While active, your Rage follows the rules below.
 - Take a Bonus Action to extend your Rage.
 
 Each time the Rage is extended, it lasts until the end of your next turn. You can maintain a Rage for up to 10 minutes.`,
-      uses: { count: 'Rages', recharge: 'long' },
+      uses: { count: 'Rages', recharge: 'shortOne' },
       activation: 'bonus',
       effects: [
         { target: 'resistance', op: 'grant', value: 'bludgeoning', condition: 'raging', note: 'Rage' },

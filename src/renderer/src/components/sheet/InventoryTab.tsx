@@ -9,6 +9,8 @@ import { Empty, NumberInput, Section, Tip, Toggle } from '../ui'
 import { EntityLink } from '../EntityInfo'
 import { EntityPicker } from '../EntityPicker'
 import { uid } from '../../store/characters'
+import { SortSelect, useSortChoice } from '../SortSelect'
+import { costGp } from '../../lib/sorting'
 import { ChoiceResolver } from './ChoiceResolver'
 
 const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const
@@ -34,6 +36,25 @@ export function InventoryTab() {
     { id: 'gear', label: t('inv.gear'), icon: <Package size={13} />, filter: (x) => !x.magic && x.base?.kind !== 'weapon' && x.base?.kind !== 'armor' }
   ]
   const carryPct = Math.min(1, d.carry.weight / Math.max(1, d.carry.capacity))
+  const [sortId, setSortId] = useSortChoice('inventory', 'manual')
+  const nameOf = (x: (typeof items)[number]): string => x.it.name || x.magic?.name || x.def?.name || ''
+  const valueOf = (x: (typeof items)[number]): number => {
+    const c = costGp((x.def as { cost?: string } | undefined)?.cost)
+    return Number.isFinite(c) ? c * x.it.qty : 0
+  }
+  const weightOf = (x: (typeof items)[number]): number => ((x.def as { weight?: number } | undefined)?.weight ?? 0) * x.it.qty
+  const sortItems = (list: typeof items): typeof items =>
+    sortId === 'manual'
+      ? list
+      : [...list].sort((a, b) =>
+          sortId === 'name'
+            ? nameOf(a).localeCompare(nameOf(b), 'en', { sensitivity: 'base' })
+            : sortId === 'weight'
+              ? weightOf(b) - weightOf(a) || nameOf(a).localeCompare(nameOf(b))
+              : sortId === 'value'
+                ? valueOf(b) - valueOf(a) || nameOf(a).localeCompare(nameOf(b))
+                : Number(b.it.equipped || b.it.attuned) - Number(a.it.equipped || a.it.attuned) || nameOf(a).localeCompare(nameOf(b))
+        )
 
   return (
     <div className="grid grid-cols-12 gap-4">
@@ -56,6 +77,20 @@ export function InventoryTab() {
               <Plus size={14} />
             </button>
           </form>
+          {items.length > 1 && (
+            <SortSelect
+              className="ml-auto w-52"
+              value={sortId}
+              onChange={setSortId}
+              options={[
+                { id: 'manual', label: 'manual' },
+                { id: 'equipped', label: 'equipped' },
+                { id: 'name', label: 'name' },
+                { id: 'value', label: 'value' },
+                { id: 'weight', label: 'weight' }
+              ]}
+            />
+          )}
         </div>
         {items.length === 0 && (
           <div className="panel">
@@ -63,7 +98,7 @@ export function InventoryTab() {
           </div>
         )}
         {groups.map((g) => {
-          const list = items.filter(g.filter)
+          const list = sortItems(items.filter(g.filter))
           if (!list.length) return null
           return (
             <Section key={g.id} title={<span className="flex items-center gap-1.5">{g.icon} {g.label}</span>}>

@@ -395,7 +395,7 @@ function OptionCard({ o, onPick }: { o: CombatOption; onPick: (o: CombatOption) 
   if (o.kind === 'attack') {
     name = o.attack?.name ?? t('combat.opportunity')
     // Off-hand uten Two-Weapon Fighting: ingen positiv modifier på skaden
-    const dmg = o.attack && o.offhand && !char.feats.some((f) => f.featId === 'two-weapon-fighting') ? o.attack.damage.replace(/\+\d+$/, '') : o.attack?.damage
+    const dmg = o.attack && o.offhand && !char.feats.some((f) => f.featId === 'two-weapon-fighting') ? (o.attack.offhandDamage ?? o.attack.damage) : o.attack?.damage
     sub = o.attack ? `${o.attack.bonus ? signed(o.attack.bonus.value) : ''} · ${dmg} ${o.attack.damageType} · ${o.attack.range}` : t('combat.opportunityTip')
     if (o.offhand) {
       const bl = o.attack ? offhandBlocked(c, o.attack.key) : 'noLight'
@@ -451,8 +451,10 @@ function EndCombat({ open, onClose }: { open: boolean; onClose: () => void }) {
   const end = (rest: boolean): void => {
     update((ch: Character) => {
       if (!ch.combat) return
-      // Rage, buffs og andre kampeffekter slutter når kampen gjør det
-      endEffects(ch.combat, ch, () => true)
+      // Kampeffekter (Rage, Shield, Dodge …) slutter. Lange buffs (Aid, Longstrider …) beholdes som
+      // egne effekter på arket – de kan slås av under «Egne» når de går ut.
+      const lasting = new Set(ch.combat.effects.filter((e) => e.charEffects?.length && (e.rounds === undefined || e.rounds > 10)).map((e) => e.uid))
+      endEffects(ch.combat, ch, (e) => !lasting.has(e.uid))
       ch.combat = undefined
     })
     if (anim) confetti({ particleCount: 70, spread: 70, origin: { y: 0.4 } })

@@ -143,7 +143,7 @@ Once within the next hour when the creature fails a D20 Test, the creature can r
 **Number of Uses.** You can confer a Bardic Inspiration die a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.
 
 **At Higher Levels.** Your Bardic Inspiration die changes when you reach certain Bard levels, as shown in the Bardic Die column of the Bard Features table. The die becomes a d8 at level 5, a d10 at level 10, and a d12 at level 15.`,
-      uses: { count: 'mod.cha', recharge: 'long' },
+      uses: { count: 'mod.cha', recharge: 'long', shortFrom: 5 },
       activation: 'bonus'
     },
     {

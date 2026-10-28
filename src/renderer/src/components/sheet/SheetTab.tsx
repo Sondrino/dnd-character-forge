@@ -12,6 +12,7 @@ import { AnimatedNumber, Section, Tip, NumberInput } from '../ui'
 import { useRolls } from '../../store/rolls'
 import { d20 } from '../../dice'
 import { EntityLink } from '../EntityInfo'
+import { applyDamage, deathSave } from '../../lib/combat'
 import type { DerivedAttack, DerivedFeature } from '../../engine/compute'
 
 export function SheetTab() {
@@ -115,13 +116,17 @@ function HpBox() {
       if (kind === 'heal') c.hp.current = Math.min(max, Math.max(0, c.hp.current) + amount)
       else if (kind === 'temp') c.hp.temp = Math.max(c.hp.temp, amount)
       else {
-        let rest = amount
-        const fromTemp = Math.min(c.hp.temp, rest)
-        c.hp.temp -= fromTemp
-        rest -= fromTemp
-        c.hp.current = Math.max(0, c.hp.current - rest)
+        // Samme regler som i kampmodus: temp HP først, 0 HP = bevisstløs, skade på 0 HP = death save-feil
+        const r = applyDamage({ current: c.hp.current, temp: c.hp.temp, max, amount, resistances: [], immunities: [], vulnerabilities: [], concentrating: false })
+        c.hp.current = r.current
+        c.hp.temp = r.temp
+        if (r.droppedToZero && !c.conditions.includes('unconscious')) c.conditions.push('unconscious')
+        if (r.deathFailures) c.deathSaves = { successes: c.deathSaves.successes >= 3 ? 0 : c.deathSaves.successes, failures: Math.min(3, c.deathSaves.failures + r.deathFailures) }
       }
-      if (c.hp.current > 0) c.deathSaves = { successes: 0, failures: 0 }
+      if (c.hp.current > 0) {
+        c.deathSaves = { successes: 0, failures: 0 }
+        c.conditions = c.conditions.filter((x) => x !== 'unconscious')
+      }
     })
     if (kind !== 'temp') {
       setFlash(kind)
@@ -195,7 +200,7 @@ function HitDiceBox() {
                 const r = roll(`1d${h.die}${d.abilities.con.mod >= 0 ? '+' : ''}${d.abilities.con.mod}`, `Hit Die (d${h.die})`, { character: char.name })
                 update((c) => {
                   c.hitDiceUsed[String(h.die)] = (c.hitDiceUsed[String(h.die)] ?? 0) + 1
-                  c.hp.current = Math.min(d.hpMax.value, c.hp.current + Math.max(0, r.total))
+                  c.hp.current = Math.min(d.hpMax.value, c.hp.current + Math.max(1, r.total))
                 })
               }}
             >
@@ -224,20 +229,23 @@ function DeathSaves() {
         <button
           className="btn btn-ghost btn-sm px-1"
           onClick={() => {
-            const r = roll('1d20', 'Death Saving Throw', { character: char.name })
+            // Exhaustion trekker fra death saves (de er saving throws)
+            const r = roll(char.exhaustion ? `1d20-${2 * Math.min(6, char.exhaustion)}` : '1d20', 'Death Saving Throw', { character: char.name })
             update((c) => {
-              if (r.natural === 20) {
+              const res = deathSave(r.natural === 20 ? 20 : r.natural === 1 ? 1 : r.total, c.deathSaves)
+              if (res.revived) {
                 c.hp.current = 1
                 c.deathSaves = { successes: 0, failures: 0 }
-              } else if (r.natural === 1) c.deathSaves.failures = Math.min(3, c.deathSaves.failures + 2)
-              else if (r.total >= 10) c.deathSaves.successes = Math.min(3, c.deathSaves.successes + 1)
-              else c.deathSaves.failures = Math.min(3, c.deathSaves.failures + 1)
+                c.conditions = c.conditions.filter((x) => x !== 'unconscious')
+              } else c.deathSaves = { successes: res.successes, failures: res.failures }
             })
           }}
         >
           🎲
         </button>
       </div>
+      {ds.successes >= 3 && <div className="text-[11px] font-semibold text-good">{t('sheet.stable')}</div>}
+      {ds.failures >= 3 && <div className="text-[11px] font-semibold text-bad">{t('sheet.dead')}</div>}
       {(['successes', 'failures'] as const).map((k) => (
         <div key={k} className="flex items-center gap-2 text-xs">
           <span className="w-16 text-muted">{k === 'successes' ? t('sheet.successes') : t('sheet.failures')}</span>

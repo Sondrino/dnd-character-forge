@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, Wand2 } from 'lucide-react'
 import type { Ability, DamageType, Effect, Feature, FeatureRoll, Uses } from '../../types'
@@ -6,12 +6,12 @@ import { ABILITIES } from '../../types'
 import { Markdown, Modal, Toggle } from '../ui'
 import { EffectsEditor } from '../HomebrewEditor'
 import { uid } from '../../store/characters'
-import { useChar } from './context'
+import { CharCtx } from './context'
 import { evalAbility, resolveDice } from '../../lib/combat'
 
 const DAMAGE: DamageType[] = ['acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder']
 const ABIL: Record<Ability, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
-const RECHARGE: Record<Uses['recharge'], string> = { short: 'Short Rest', long: 'Long Rest', shortOrLong: 'Short/Long Rest', dawn: 'Dawn', turn: 'Turn' }
+const RECHARGE: Record<Uses['recharge'], string> = { short: 'Short Rest', long: 'Long Rest', shortOrLong: 'Short/Long Rest', dawn: 'Dawn', turn: 'Turn', shortOne: 'Long Rest (1 on Short)' }
 
 /** Navn → tilstandsnavn for effekter som kan slås av/på («Dragon Wings» → «dragonWings») */
 export function stateName(name: string): string {
@@ -35,9 +35,11 @@ interface Draft {
   duration: string
   effects: Effect[]
   roll: FeatureRoll | null
+  /** Level featuren fås på (subclass: class-level, species: karakter-level) */
+  level: string
 }
 
-const blank = (): Draft => ({ name: '', summary: '', description: '', activation: 'action', uses: '', recharge: 'long', toggle: false, duration: '10', effects: [], roll: null })
+const blank = (level = ''): Draft => ({ name: '', summary: '', description: '', activation: 'action', uses: '', recharge: 'long', toggle: false, duration: '10', effects: [], roll: null, level })
 
 function fromFeature(f: Feature): Draft {
   return {
@@ -51,7 +53,8 @@ function fromFeature(f: Feature): Draft {
     duration: f.duration ? String(f.duration) : '10',
     // Betingelsen som gjør effektene av/på legges på ved lagring – vis dem uten
     effects: (f.effects ?? []).map((e) => (f.toggle && e.condition === f.toggle ? { ...e, condition: undefined } : e)),
-    roll: f.roll ?? null
+    roll: f.roll ?? null,
+    level: f.level !== undefined ? String(f.level) : ''
   }
 }
 
@@ -64,27 +67,43 @@ const TEMPLATES: { id: string; draft: () => Partial<Draft> }[] = [
   { id: 'shield', draft: () => ({ activation: 'reaction', uses: 'mod.con', recharge: 'long', roll: { kind: 'temp', dice: '1d6+level' } }) }
 ]
 
-export function SpecialAbilityEditor({ open, onClose, initial }: { open: boolean; onClose: () => void; initial: Feature | null }) {
+/**
+ * Editor for en evne/feature. På et ark lagres den som karakterens spesial-evne; med `onSave` brukes den
+ * også for features i homebrew (subclasses, species …), og `withLevel` viser level-feltet.
+ */
+export function SpecialAbilityEditor({
+  open, onClose, initial, onSave, withLevel, defaultLevel = 3, title
+}: {
+  open: boolean
+  onClose: () => void
+  initial: Feature | null
+  onSave?: (f: Feature) => void
+  withLevel?: boolean
+  defaultLevel?: number
+  title?: string
+}) {
   const { t } = useTranslation()
-  const { derived: d, update } = useChar()
+  const ctx = useContext(CharCtx)
+  const d = ctx?.derived
   const [f, setF] = useState<Draft>(blank())
   useEffect(() => {
-    if (open) setF(initial ? fromFeature(initial) : blank())
+    if (open) setF(initial ? fromFeature(initial) : blank(withLevel ? String(defaultLevel) : ''))
   }, [open, initial])
   const set = (p: Partial<Draft>): void => setF((x) => ({ ...x, ...p }))
   const setRoll = (p: Partial<FeatureRoll>): void => setF((x) => ({ ...x, roll: { ...(x.roll ?? { kind: 'attack' }), ...p } }))
 
-  const usesN = f.uses.trim() ? evalAbility(f.uses, d) : null
-  const atk = f.roll?.kind === 'attack' ? evalAbility(f.roll.attack || 'prof', d) : null
-  const dc = f.roll?.kind === 'save' ? evalAbility(f.roll.dc || '8+prof', d) : null
-  const dice = f.roll?.dice ? resolveDice(f.roll.dice, d) : ''
+  // Uten karakter (homebrew) kan formlene ikke regnes ut ennå – de vises som de er
+  const usesN = d && f.uses.trim() ? evalAbility(f.uses, d) : null
+  const atk = d && f.roll?.kind === 'attack' ? evalAbility(f.roll.attack || 'prof', d) : null
+  const dc = d && f.roll?.kind === 'save' ? evalAbility(f.roll.dc || '8+prof', d) : null
+  const dice = f.roll?.dice ? (d ? resolveDice(f.roll.dice, d) : f.roll.dice) : ''
 
   /** Sammendrag fra mekanikken når brukeren ikke har skrevet et */
   const autoSummary = (): string => {
     const parts: string[] = []
     const r = f.roll
-    if (r?.kind === 'attack') parts.push(t('ability.auto.attack', { n: atk !== null && atk >= 0 ? `+${atk}` : String(atk ?? '?'), dice, type: r.damageType ?? '' }))
-    if (r?.kind === 'save') parts.push(t('ability.auto.save', { ab: ABIL[r.save ?? 'dex'], dc: dc ?? '?', dice, type: r.damageType ?? '' }))
+    if (r?.kind === 'attack') parts.push(t('ability.auto.attack', { n: atk !== null ? (atk >= 0 ? `+${atk}` : String(atk)) : `+(${r.attack || 'prof'})`, dice, type: r.damageType ?? '' }))
+    if (r?.kind === 'save') parts.push(t('ability.auto.save', { ab: ABIL[r.save ?? 'dex'], dc: dc ?? (r.dc || '8+prof'), dice, type: r.damageType ?? '' }))
     if (r?.kind === 'damage') parts.push(`${dice} ${r.damageType ?? ''}`.trim())
     if (r?.kind === 'heal') parts.push(t('ability.auto.heal', { dice }))
     if (r?.kind === 'temp') parts.push(t('ability.auto.temp', { dice }))
@@ -108,9 +127,15 @@ export function SpecialAbilityEditor({ open, onClose, initial }: { open: boolean
       effects: f.effects.map((e) => (state && !e.condition ? { ...e, condition: state } : e)),
       roll: f.roll ?? undefined,
       toggle: state,
-      duration: f.toggle && Number(f.duration) > 0 ? Number(f.duration) : undefined
+      duration: f.toggle && Number(f.duration) > 0 ? Number(f.duration) : undefined,
+      ...(withLevel && f.level.trim() ? { level: Math.max(1, Math.min(20, Number(f.level) || 1)) } : {})
     }
-    update((c) => {
+    if (onSave) {
+      onSave(feature)
+      onClose()
+      return
+    }
+    ctx?.update((c) => {
       const i = c.customFeatures.findIndex((x) => x.id === feature.id)
       if (i >= 0) {
         // Gammel tilstand slås av hvis navnet (og dermed tilstanden) endres
@@ -126,7 +151,7 @@ export function SpecialAbilityEditor({ open, onClose, initial }: { open: boolean
     <Modal
       open={open}
       onClose={onClose}
-      title={initial ? t('ability.edit') : t('ability.create')}
+      title={title ?? (initial ? t('ability.edit') : t('ability.create'))}
       width={820}
       footer={
         <>
@@ -156,7 +181,12 @@ export function SpecialAbilityEditor({ open, onClose, initial }: { open: boolean
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">{t('common.name')}</label>
-            <input className="input" value={f.name} onChange={(e) => set({ name: e.target.value })} autoFocus placeholder={t('ability.namePh')} />
+            <div className="flex gap-2">
+              {withLevel && (
+                <input className="input w-20 text-center" title="Level" inputMode="numeric" value={f.level} onChange={(e) => set({ level: e.target.value.replace(/[^\d]/g, '') })} placeholder="Lvl" />
+              )}
+              <input className="input" value={f.name} onChange={(e) => set({ name: e.target.value })} autoFocus placeholder={t('ability.namePh')} />
+            </div>
           </div>
           <div>
             <label className="label">{t('ability.summary')}</label>
@@ -182,7 +212,7 @@ export function SpecialAbilityEditor({ open, onClose, initial }: { open: boolean
           <div>
             <label className="label">{t('ability.uses')}</label>
             <input className="input" value={f.uses} onChange={(e) => set({ uses: e.target.value })} placeholder={t('ability.usesPh')} />
-            <div className="mt-0.5 text-[11px] text-muted">{f.uses.trim() ? (usesN !== null ? t('ability.usesNow', { n: Math.max(1, usesN) }) : t('ability.badFormula')) : t('ability.unlimited')}</div>
+            <div className="mt-0.5 text-[11px] text-muted">{f.uses.trim() ? (usesN !== null ? t('ability.usesNow', { n: Math.max(1, usesN) }) : (d ? t('ability.badFormula') : t('ability.perCharacter'))) : t('ability.unlimited')}</div>
           </div>
           <div>
             <label className="label">{t('features.recharge')}</label>
@@ -190,6 +220,7 @@ export function SpecialAbilityEditor({ open, onClose, initial }: { open: boolean
               <option value="short">Short Rest</option>
               <option value="long">Long Rest</option>
               <option value="shortOrLong">Short or Long Rest</option>
+              <option value="shortOne">Long Rest (1 back on Short Rest)</option>
               <option value="dawn">Dawn</option>
               <option value="turn">Turn</option>
             </select>
@@ -254,7 +285,7 @@ export function SpecialAbilityEditor({ open, onClose, initial }: { open: boolean
                   <div>
                     <label className="label">{t('ability.attackBonus')}</label>
                     <input className="input" value={f.roll.attack ?? ''} onChange={(e) => setRoll({ attack: e.target.value })} />
-                    <div className="mt-0.5 text-[11px] text-muted">{atk !== null ? `= ${atk >= 0 ? '+' : ''}${atk}` : t('ability.badFormula')}</div>
+                    <div className="mt-0.5 text-[11px] text-muted">{atk !== null ? `= ${atk >= 0 ? '+' : ''}${atk}` : (d ? t('ability.badFormula') : t('ability.perCharacter'))}</div>
                   </div>
                   <div>
                     <label className="label">{t('ability.attackType')}</label>
@@ -280,7 +311,7 @@ export function SpecialAbilityEditor({ open, onClose, initial }: { open: boolean
                   <div>
                     <label className="label">Save DC</label>
                     <input className="input" value={f.roll.dc ?? ''} onChange={(e) => setRoll({ dc: e.target.value })} />
-                    <div className="mt-0.5 text-[11px] text-muted">{dc !== null ? `= DC ${dc}` : t('ability.badFormula')}</div>
+                    <div className="mt-0.5 text-[11px] text-muted">{dc !== null ? `= DC ${dc}` : (d ? t('ability.badFormula') : t('ability.perCharacter'))}</div>
                   </div>
                 </>
               )}
