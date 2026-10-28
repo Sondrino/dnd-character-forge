@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Maximize2, ExternalLink } from 'lucide-react'
+import { Search, Maximize2, ExternalLink, ChevronDown } from 'lucide-react'
 import type { AnyEntity, EntityKind, FeatDef, MagicItemDef, SpellDef, WeaponDef } from '../types'
 import { useLookup, useUi } from '../store/ui'
 import { InfoPopover, entityFacts, openDndBeyond } from '../components/EntityInfo'
 import { SourceBadge } from '../components/ui'
 import { matchesQuery } from '../lib/search'
+import { groupEntities } from '../lib/compendiumGroups'
 import { BookFilterBar, BookFilterReset, useBookFilter } from '../components/BookFilter'
 
 const KINDS: { kind: EntityKind; label: string }[] = [
@@ -41,6 +42,9 @@ export default function Compendium() {
   const [f1, setF1] = useState<string>('all')
   const [f2, setF2] = useState<string>('all')
   const [popover, setPopover] = useState<{ e: AnyEntity; rect: DOMRect } | null>(null)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const all = useMemo(() => L.all(kind).sort((a, b) => ((a as SpellDef).level ?? 0) - ((b as SpellDef).level ?? 0) || a.name.localeCompare(b.name)), [L, kind])
   const filters = filterDefs(kind, all, L)
@@ -52,6 +56,13 @@ export default function Compendium() {
     if (filters[1] && f2 !== 'all' && !filters[1].test(e, f2)) return false
     return true
   })
+  const groups = useMemo(() => groupEntities(kind, shown, L), [kind, shown, L])
+  // Ny kategori eller nytt søk: start øverst med alle grupper åpne
+  useEffect(() => {
+    setCollapsed({})
+    setExpanded({})
+    scrollRef.current?.scrollTo({ top: 0 })
+  }, [kind])
 
   return (
     <div className="flex h-full">
@@ -111,49 +122,103 @@ export default function Compendium() {
           <span className="ml-auto text-sm text-muted">{t('comp.count', { n: shown.length })}</span>
           <BookFilterBar state={bf} className="w-full" />
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
-            {shown.slice(0, 400).map((e, i) => {
-              const facts = entityFacts(e, L).slice(0, 2)
-              return (
-                <motion.div
-                  key={`${e.kind}:${e.id}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i, 24) * 0.015 }}
-                  className="panel card-hover group cursor-pointer p-3"
-                  onClick={(ev) => setPopover({ e, rect: (ev.currentTarget as HTMLElement).getBoundingClientRect() })}
-                  onDoubleClick={() => openDetail({ kind: e.kind, id: e.id })}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 pb-6">
+          {groups.length > 1 && (
+            <div className="sticky top-0 z-10 -mx-6 mb-2 flex flex-wrap gap-1 border-b border-line-soft bg-bg/90 px-6 py-2 backdrop-blur">
+              {groups.map((g) => (
+                <button
+                  key={g.id}
+                  className="chip cursor-pointer hover:border-gold hover:text-gold"
+                  onClick={() => {
+                    setCollapsed((c) => ({ ...c, [g.id]: false }))
+                    requestAnimationFrame(() => scrollRef.current?.querySelector(`#grp-${g.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="font-display text-[15px] text-gold">{e.name}</div>
-                    <div className="flex opacity-0 transition-opacity group-hover:opacity-100">
-                      <button className="btn btn-ghost btn-sm px-1" onClick={(ev) => (ev.stopPropagation(), openDetail({ kind: e.kind, id: e.id }))}>
-                        <Maximize2 size={13} />
-                      </button>
-                      <button className="btn btn-ghost btn-sm px-1" onClick={(ev) => (ev.stopPropagation(), openDndBeyond(e))}>
-                        <ExternalLink size={13} />
-                      </button>
-                    </div>
+                  {g.label} <span className="text-[10px] text-faint">{g.items.length}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {groups.map((g) => {
+            const single = groups.length === 1
+            const limit = expanded[g.id] ? Infinity : single ? 400 : 60
+            const closed = !single && collapsed[g.id]
+            return (
+              <section key={g.id} id={`grp-${g.id}`} className={single ? 'pt-4' : 'scroll-mt-14 pt-3'}>
+                {!single && (
+                  <button
+                    className="mb-2 flex w-full items-center gap-2 border-b border-gold/20 pb-1 text-left"
+                    onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
+                  >
+                    <ChevronDown size={15} className={`text-gold transition-transform ${closed ? '-rotate-90' : ''}`} />
+                    <span className="font-display text-lg text-gold">{g.label}</span>
+                    <span className="text-xs text-muted">{g.items.length}</span>
+                  </button>
+                )}
+                {!closed && (
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
+                    {g.items.slice(0, limit).map((e, i) => (
+                      <CompCard key={`${e.kind}:${e.id}`} e={e} i={i} onPick={(rect) => setPopover({ e, rect })} />
+                    ))}
                   </div>
-                  {facts.map((f) => (
-                    <div key={f.label} className="truncate text-[11px] text-muted">
-                      {f.value}
-                    </div>
-                  ))}
-                  <p className="mt-1 line-clamp-2 text-xs text-ink/80">{e.summary}</p>
-                  <div className="mt-2">
-                    <SourceBadge source={e.source} book={e.sourceBook} />
+                )}
+                {!closed && g.items.length > limit && (
+                  <div className="mt-2 text-center">
+                    <button className="btn btn-sm" onClick={() => setExpanded((x) => ({ ...x, [g.id]: true }))}>
+                      {t('comp.showAll', { n: g.items.length, group: g.label || t('common.all') })}
+                    </button>
                   </div>
-                </motion.div>
-              )
-            })}
-          </div>
-          {shown.length > 400 && <div className="mt-4 text-center text-sm text-muted">{t('comp.refine', { n: shown.length - 400 })}</div>}
+                )}
+              </section>
+            )
+          })}
+          {!shown.length && (
+            <div className="py-10 text-center text-muted">
+              {t('common.noResults')}
+              <BookFilterReset state={bf} total={all.length} />
+            </div>
+          )}
         </div>
       </div>
       {popover && <InfoPopover entity={popover.e} anchor={popover.rect} onClose={() => setPopover(null)} />}
     </div>
+  )
+}
+
+function CompCard({ e, i, onPick }: { e: AnyEntity; i: number; onPick: (rect: DOMRect) => void }) {
+  const L = useLookup()
+  const openDetail = useUi((s) => s.openDetail)
+  const facts = entityFacts(e, L).slice(0, 2)
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(i, 24) * 0.015 }}
+      className="panel card-hover group cursor-pointer p-3"
+      onClick={(ev) => onPick((ev.currentTarget as HTMLElement).getBoundingClientRect())}
+      onDoubleClick={() => openDetail({ kind: e.kind, id: e.id })}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="font-display text-[15px] text-gold">{e.name}</div>
+        <div className="flex opacity-0 transition-opacity group-hover:opacity-100">
+          <button className="btn btn-ghost btn-sm px-1" onClick={(ev) => (ev.stopPropagation(), openDetail({ kind: e.kind, id: e.id }))}>
+            <Maximize2 size={13} />
+          </button>
+          <button className="btn btn-ghost btn-sm px-1" onClick={(ev) => (ev.stopPropagation(), openDndBeyond(e))}>
+            <ExternalLink size={13} />
+          </button>
+        </div>
+      </div>
+      {facts.map((f) => (
+        <div key={f.label} className="truncate text-[11px] text-muted">
+          {f.value}
+        </div>
+      ))}
+      <p className="mt-1 line-clamp-2 text-xs text-ink/80">{e.summary}</p>
+      <div className="mt-2">
+        <SourceBadge source={e.source} book={e.sourceBook} />
+      </div>
+    </motion.div>
   )
 }
 

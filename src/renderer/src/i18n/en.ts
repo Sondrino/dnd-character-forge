@@ -23,7 +23,7 @@ export const en: typeof nb = {
   },
   dice: {
     tray: 'Dice tray', addHint: 'Left click: add · Right click: remove', advantage: 'Advantage', disadvantage: 'Disadvantage',
-    rollX: 'Roll {{x}}', pick: 'Pick dice', roll: 'Roll', history: 'History', noHistory: 'No rolls yet', nat20: '✦ NATURAL 20! ✦', nat1: 'Natural 1…'
+    rollX: 'Roll {{x}}', '3dOn': '3D dice are on – click for a simple animation', '3dOff': '3D dice are off – click to turn on', modifier: 'modifier', clearPool: 'Clear ({{n}} dice)', quick: 'Quick rolls', reroll: 'Roll again', theme: 'Dice colour', dice3d: '3D dice with physics', pick: 'Pick dice', roll: 'Roll', history: 'History', noHistory: 'No rolls yet', nat20: '✦ NATURAL 20! ✦', nat1: 'Natural 1…'
   },
   stat: { custom: 'Custom adjustment', editTitle: 'Edit value', auto: 'Automatically calculated', adjustment: 'Custom adjustment (+/−)', adjustmentHint: 'Added on top of the calculation – still updates automatically.', fixed: 'Fixed value (optional)', fixedPlaceholder: 'Empty = automatic', fixedHint: 'Replaces the whole calculation. Leave empty to use automation.', resetAll: 'Reset to automatic', advantage: 'Advantage', disadvantage: 'Disadvantage', overridden: 'Set manually (computed: {{v}})', reset: 'Reset', edit: 'Edit or adjust value' },
   sheet: {
@@ -120,7 +120,7 @@ export const en: typeof nb = {
     inventoryNow: 'Current equipment', moreInSheet: 'Add and change more equipment on the sheet’s Inventory tab.', startingEquipment: 'starting equipment', undo: 'Undo',
     ready: 'Your character is ready!', readyText: 'All choices are made. Press Finish to go to the sheet.', remaining: '{{n}} choices remaining', skillsProf: 'Skill proficiencies'
   },
-  comp: { allBooks: 'All books', allSources: 'All sources', count: '{{n}} results', refine: '{{n}} more – search to narrow down' },
+  comp: { showAll: 'Show all {{n}} in {{group}}', allBooks: 'All books', allSources: 'All sources', count: '{{n}} results', refine: '{{n}} more – search to narrow down' },
   hb: {
     new: 'New homebrew', edit: 'Edit {{name}}', copyFrom: 'Copy from existing', type: 'Type', summary: 'Short description',
     summaryHint: 'Shown in the small popup', editText: 'Edit', preview: 'Preview', effects: 'Effects (update the sheet automatically)',

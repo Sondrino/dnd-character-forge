@@ -22,7 +22,7 @@ export const nb = {
   },
   dice: {
     tray: 'Terningbrett', addHint: 'Venstreklikk: legg til · Høyreklikk: fjern', advantage: 'Advantage', disadvantage: 'Disadvantage',
-    rollX: 'Rull {{x}}', pick: 'Velg terninger', roll: 'Rull', history: 'Historikk', noHistory: 'Ingen kast ennå', nat20: '✦ NATURAL 20! ✦', nat1: 'Natural 1 …'
+    rollX: 'Rull {{x}}', '3dOn': '3D-terninger er på – klikk for enkel animasjon', '3dOff': '3D-terninger er av – klikk for å slå på', modifier: 'modifier', clearPool: 'Tøm ({{n}} terninger)', quick: 'Hurtigvalg', reroll: 'Rull igjen', theme: 'Terningfarge', dice3d: '3D-terninger med fysikk', pick: 'Velg terninger', roll: 'Rull', history: 'Historikk', noHistory: 'Ingen kast ennå', nat20: '✦ NATURAL 20! ✦', nat1: 'Natural 1 …'
   },
   stat: { custom: 'Egen justering', editTitle: 'Endre verdi', auto: 'Automatisk utregnet', adjustment: 'Egen justering (+/−)', adjustmentHint: 'Legges oppå utregningen – oppdateres fortsatt automatisk.', fixed: 'Fast verdi (valgfritt)', fixedPlaceholder: 'Tom = automatisk', fixedHint: 'Erstatter hele utregningen. La stå tomt for å bruke automatikken.', resetAll: 'Tilbakestill til automatisk',
     advantage: 'Advantage', disadvantage: 'Disadvantage', overridden: 'Manuelt satt (beregnet: {{v}})', reset: 'Tilbakestill', edit: 'Endre eller juster verdien'
@@ -123,7 +123,7 @@ export const nb = {
     inventoryNow: 'Utstyr nå', moreInSheet: 'Du kan legge til og endre mer utstyr i «Utstyr»-fanen på arket.', startingEquipment: 'startutstyr', undo: 'Angre',
     ready: 'Karakteren er klar!', readyText: 'Alle valg er tatt. Trykk «Fullfør» for å gå til arket.', remaining: '{{n}} valg gjenstår', skillsProf: 'Skill proficiencies'
   },
-  comp: { allBooks: 'Alle bøker', allSources: 'Alle kilder', count: '{{n}} treff', refine: '{{n}} flere – søk for å snevre inn' },
+  comp: { showAll: 'Vis alle {{n}} i {{group}}', allBooks: 'Alle bøker', allSources: 'Alle kilder', count: '{{n}} treff', refine: '{{n}} flere – søk for å snevre inn' },
   hb: {
     new: 'Ny homebrew', edit: 'Rediger {{name}}', copyFrom: 'Kopier fra eksisterende', type: 'Type', summary: 'Kort beskrivelse',
     summaryHint: 'Vises i den lille popupen', editText: 'Rediger', preview: 'Forhåndsvis', effects: 'Effekter (oppdaterer arket automatisk)',

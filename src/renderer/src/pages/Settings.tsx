@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FolderOpen, Moon, Sun, Globe2 } from 'lucide-react'
+import { DICE_THEMES } from '../components/dice3d/themes'
 import { useSettings } from '../store/settings'
 import { Section, Toggle } from '../components/ui'
 import { api } from '../lib/api'
@@ -42,6 +43,22 @@ export default function SettingsPage() {
           </Row>
           <Row label={t('settings.diceSound')}>
             <Toggle checked={s.diceSound} onChange={(v) => s.set({ diceSound: v })} />
+          </Row>
+          <Row label={t('dice.dice3d')}>
+            <Toggle checked={s.dice3d !== false} onChange={(v) => s.set({ dice3d: v })} />
+          </Row>
+          <Row label={t('dice.theme')}>
+            <div className="flex gap-1.5">
+              {Object.entries(DICE_THEMES).map(([k, th]) => (
+                <button
+                  key={k}
+                  title={th.name}
+                  onClick={() => s.set({ diceTheme: k })}
+                  className={`h-6 w-6 rounded-full border-2 ${(s.diceTheme ?? 'obsidian') === k ? 'border-white' : 'border-transparent'}`}
+                  style={{ background: `radial-gradient(circle at 35% 30%, ${th.edge}, ${th.body} 65%)` }}
+                />
+              ))}
+            </div>
           </Row>
           <Row label={t('settings.showTips')}>
             <Toggle checked={s.showTips} onChange={(v) => s.set({ showTips: v })} />
@@ -89,7 +106,7 @@ export default function SettingsPage() {
       </Section>
       <Section title={t('settings.about')}>
         <div className="space-y-2 text-sm text-muted">
-          <p>D&D Character Forge 1.5.0 · {t('settings.entries', { n: allEntities.length })}</p>
+          <p>D&D Character Forge 1.6.0 · {t('settings.entries', { n: allEntities.length })}</p>
           <p>{ATTRIBUTION}</p>
           <p>{DISCLAIMER_PHB}</p>
           <p>{t('settings.trademark')}</p>

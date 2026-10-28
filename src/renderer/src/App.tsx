@@ -9,6 +9,7 @@ import { useUi } from './store/ui'
 import { useRolls } from './store/rolls'
 import { DetailDrawer, openDndBeyond } from './components/EntityInfo'
 import { DiceTray, RollToast } from './components/Dice'
+import { Dice3DLayer } from './components/dice3d/Dice3DLayer'
 import Home from './pages/Home'
 import CharacterPage from './pages/CharacterPage'
 import Builder from './pages/Builder'
@@ -70,6 +71,7 @@ function Shell() {
         </AnimatePresence>
       </main>
       <DetailDrawer />
+      <Dice3DLayer />
       <DiceTray />
       <RollToast />
       <Toast />
