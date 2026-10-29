@@ -2,6 +2,13 @@ import { create } from 'zustand'
 import { api } from '../lib/api'
 import i18n from '../i18n'
 import type { AnyEntity } from '../types'
+import { sanitizeMacros, type DiceMacro } from '../lib/macros'
+
+/** UI-skala begrenset til 0.8–1.4 (ugyldig = 1) */
+export function clampUiScale(v: unknown): number {
+  const n = typeof v === 'number' && Number.isFinite(v) ? v : 1
+  return Math.round(Math.min(1.4, Math.max(0.8, n)) * 100) / 100
+}
 
 export interface Settings {
   language: 'nb' | 'en'
@@ -25,6 +32,10 @@ export interface Settings {
   diceTheme?: string
   /** Sist valgte terningmodus i kampmodus */
   combatDice?: 'physical' | 'app'
+  /** Skalering av hele grensesnittet (0.8–1.4), brukt som CSS zoom på rot-elementet */
+  uiScale?: number
+  /** Egne terningmakroer i terningbrettet */
+  macros?: DiceMacro[]
 }
 
 const DEFAULTS: Settings = {
@@ -50,6 +61,7 @@ function applyDom(s: Settings): void {
   document.documentElement.dataset.theme = s.theme
   document.documentElement.classList.toggle('reduce-motion', !s.animations)
   document.documentElement.lang = s.language
+  document.documentElement.style.setProperty('zoom', String(clampUiScale(s.uiScale)))
   if (i18n.language !== s.language) i18n.changeLanguage(s.language)
 }
 
@@ -59,6 +71,8 @@ export const useSettings = create<SettingsState>((set, get) => ({
   async load() {
     const saved = ((await api.storeGet('settings')) ?? {}) as Partial<Settings>
     const s = { ...DEFAULTS, ...saved }
+    s.macros = sanitizeMacros(saved.macros)
+    if (saved.uiScale !== undefined) s.uiScale = clampUiScale(saved.uiScale)
     set({ ...s, loaded: true })
     applyDom(s)
   },

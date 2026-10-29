@@ -503,6 +503,8 @@ export interface Combatant {
   characterId?: string
   /** Lagt til fra bestiariet: åpner stat blocken */
   creatureId?: string
+  /** Koblet til en companion på karakteren: HP-endringer skrives tilbake dit */
+  companionUid?: string
 }
 
 export interface CombatLogEntry {
@@ -640,4 +642,31 @@ export interface Character {
   settings: { hpMethod: 'fixed' | 'roll' }
   /** Pågående kamp (kampmodus) */
   combat?: CombatState
+  /** Druid Wild Shape: kjente beast-former (creature-ids) og ev. aktiv form */
+  wildShape?: { knownForms: string[]; activeForm?: string }
+  /** Familiars, dyrevenner, steeds, summons */
+  companions?: Companion[]
+  /** Sesjonsdagbok (med XP) */
+  journal?: JournalEntry[]
+}
+
+export interface Companion {
+  uid: string
+  creatureId?: string
+  name: string
+  hp: number
+  maxHp: number
+  temp: number
+  ac?: number
+  kind: 'familiar' | 'companion' | 'steed' | 'summon' | 'other'
+  notes?: string
+}
+
+export interface JournalEntry {
+  id: string
+  /** ISO-dato (YYYY-MM-DD) */
+  date: string
+  title: string
+  text: string
+  xp?: number
 }

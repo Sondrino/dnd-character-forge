@@ -2,6 +2,9 @@ import { create } from 'zustand'
 import { produce } from 'immer'
 import type { Character } from '../types'
 import { api } from '../lib/api'
+import { useHomebrew } from './settings'
+import { homebrewToImport } from '../lib/share'
+import { baseLookup } from '../data'
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
@@ -68,6 +71,11 @@ export function normalizeCharacter(raw: Partial<Character>): Character {
   c.settings = { ...base.settings, ...(raw.settings ?? {}) }
   c.activeStates = raw.activeStates ?? []
   c.adjustments = raw.adjustments ?? {}
+  c.wildShape = { knownForms: Array.isArray(raw.wildShape?.knownForms) ? raw.wildShape.knownForms : [], activeForm: raw.wildShape?.activeForm }
+  c.companions = Array.isArray(raw.companions) ? raw.companions : []
+  c.journal = Array.isArray(raw.journal) ? raw.journal : []
+  // Homebrew som fulgte med en eksportert fil hører ikke hjemme på selve karakteren
+  delete (c as Character & { bundledHomebrew?: unknown }).bundledHomebrew
   return c
 }
 
@@ -219,6 +227,9 @@ export const useCharacters = create<CharactersState>((set, get) => ({
     let n = 0
     for (const raw of list) {
       if (!raw || typeof raw !== 'object' || !('baseAbilities' in raw)) continue
+      // Delt karakter med homebrew: legg det inn i biblioteket hvis det mangler
+      const hb = useHomebrew.getState()
+      for (const e of homebrewToImport((raw as { bundledHomebrew?: unknown }).bundledHomebrew, hb.entities, baseLookup)) hb.upsert(e)
       const c = normalizeCharacter(raw)
       const existing = get().characters[c.id]
       // Samme karakter importert på nytt: en nyere versjon erstatter den gamle, en eldre blir en kopi

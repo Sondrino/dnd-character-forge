@@ -20,15 +20,19 @@ import SettingsPage from './pages/Settings'
 import i18n from './i18n'
 import PrintPage from './pages/Print'
 import PartyPage from './pages/Party'
+import { CommandPalette, usePalette } from './components/CommandPalette'
+import { useHotkeys } from './lib/hotkeys'
 
 export default function App() {
   const loadChars = useCharacters((s) => s.load)
   const loadSettings = useSettings((s) => s.load)
   const loadHb = useHomebrew((s) => s.load)
+  const loadRolls = useRolls((s) => s.load)
   useEffect(() => {
     loadSettings()
     loadChars()
     loadHb()
+    loadRolls()
   }, [])
   return (
     <HashRouter>
@@ -63,6 +67,11 @@ function useUndoKeys(): void {
 function Shell() {
   const location = useLocation()
   useUndoKeys()
+  useHotkeys({
+    palette: () => usePalette.getState().toggle(),
+    dice: () => useRolls.getState().setTray(!useRolls.getState().trayOpen),
+    escape: () => (usePalette.getState().open ? (usePalette.getState().setOpen(false), true) : false)
+  })
   if (location.pathname.startsWith('/print/')) {
     return (
       <Routes>
@@ -102,6 +111,7 @@ function Shell() {
       <DiceTray />
       <RollToast />
       <Toast />
+      <CommandPalette />
     </div>
   )
 }

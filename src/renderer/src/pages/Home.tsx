@@ -8,6 +8,7 @@ import { useLookup, useUi } from '../store/ui'
 import { computeCharacter } from '../engine/compute'
 import { Modal } from '../components/ui'
 import { api } from '../lib/api'
+import { exportCharacter } from '../lib/exportCharacter'
 import type { Character } from '../types'
 import { SortSelect, useSortChoice } from '../components/SortSelect'
 import { ClassEmblem } from '../components/ClassEmblem'
@@ -188,7 +189,7 @@ function CharacterCard({ c, index }: { c: Character; index: number }) {
             <button className="btn btn-ghost btn-sm" title={t('home.duplicate')} onClick={() => dup(c.id)}>
               <Copy size={14} />
             </button>
-            <button className="btn btn-ghost btn-sm" title={t('home.export')} onClick={() => api.exportCharacter(c)}>
+            <button className="btn btn-ghost btn-sm" title={t('home.export')} onClick={() => exportCharacter(c)}>
               <Download size={14} />
             </button>
             <button className="btn btn-ghost btn-sm" title="PDF" onClick={() => api.exportPdf({ id: c.id, name: c.name, parts: ['sheet', 'spells', 'features', 'inventory', 'spellcards', 'details', 'legal'] })}>

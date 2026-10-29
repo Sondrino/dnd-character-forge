@@ -215,7 +215,9 @@ handle('characters:restore', async (_e, file: string) => {
   return c
 })
 
-handle('characters:export', async (_e, character: { name?: string }) => {
+handle('characters:export', async (_e, character: { name?: string; bundledHomebrew?: unknown }) => {
+  if (!character || typeof character !== 'object' || Array.isArray(character)) return false
+  if (character.bundledHomebrew !== undefined && !Array.isArray(character.bundledHomebrew)) return false
   const res = await dialog.showSaveDialog(mainWindow!, {
     title: 'Eksporter karakter',
     defaultPath: `${character.name || 'karakter'}.dndchar.json`,

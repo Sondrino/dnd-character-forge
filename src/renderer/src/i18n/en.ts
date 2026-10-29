@@ -1,5 +1,6 @@
 import type { nb } from './nb'
 import { combatEn } from './combat'
+import { toolsEn } from './tools'
 import { abilityEn } from './ability'
 import { partyEn } from './party'
 
@@ -221,5 +222,6 @@ export const en: typeof nb = {
   },
   party: partyEn,
   combat: combatEn,
+  tools: toolsEn,
   ability: abilityEn
 }

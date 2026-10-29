@@ -17,6 +17,8 @@ import { useUi } from '../../store/ui'
 import { ConditionChips } from './ConditionChips'
 import { creatureCombatant, creatureInitMod, hpDice, toggleCombatantCondition } from '../../lib/monsters'
 import { toggleCharacterCondition } from '../../lib/party'
+import { useHotkeyListener } from '../../lib/hotkeys'
+import { AddCompanionsButton } from './CompanionsButton'
 
 const DAMAGE_TYPES: DamageType[] = ['acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder']
 const ABIL: Record<Ability, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
@@ -455,6 +457,7 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
   const [form, setForm] = useState<{ name: string; init: string; initMod: string; hp: string; ac: string; count: number; ally: boolean } | null>(null)
   const [dmgFor, setDmgFor] = useState<Record<string, string>>({})
   const [bestiary, setBestiary] = useState(false)
+  useHotkeyListener('next', () => onNext())
 
   /** Legg til skapninger fra bestiariet (SRD-monstre og egne) med AC, HP og rullet initiativ */
   const addCreatures = (list: CreatureDef[]): void =>
@@ -510,6 +513,7 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
           <button className={`btn btn-sm px-1.5 ${rollHp ? 'border-gold bg-gold/15 text-gold-2' : ''}`} onClick={() => setRollHp(!rollHp)} title={`${t('party.rollHp')}: ${t('party.rollHpTip')}`} aria-pressed={rollHp}>
             <Dices size={13} />
           </button>
+          <AddCompanionsButton />
           <button className="btn btn-sm" onClick={() => setBestiary(true)} title={t('combat.bestiaryTip')}>
             <BookOpen size={13} /> {t('combat.bestiary')}
           </button>
