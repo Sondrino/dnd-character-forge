@@ -1,6 +1,7 @@
 import type { nb } from './nb'
 import { combatEn } from './combat'
 import { abilityEn } from './ability'
+import { spellsxEn } from './spellsx'
 
 export const en: typeof nb = {
   nav: { characters: 'Characters', compendium: 'Compendium', homebrew: 'Homebrew', settings: 'Settings', dice: 'Dice' },
@@ -219,5 +220,6 @@ export const en: typeof nb = {
     auto: 'Auto', adjustment: 'Adjustment', fixed: 'Fixed', result: 'Result'
   },
   combat: combatEn,
-  ability: abilityEn
+  ability: abilityEn,
+  spellsx: spellsxEn
 }

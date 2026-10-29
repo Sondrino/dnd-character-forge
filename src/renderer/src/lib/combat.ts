@@ -260,8 +260,17 @@ export const SPELL_BUFFS: Record<string, { effects: Effect[] | ((slot: number) =
   'blade-ward': { effects: [], note: 'attackers subtract 1d4 from attack rolls against you' }
 }
 
+/**
+ * Hvor effekter og concentration ligger: kampen (CombatState) under en kamp, ellers karakteren selv
+ * (Character.effects / Character.concentration) – så spells kastet før/etter en kamp varer.
+ */
+export interface EffectHolder {
+  effects?: CombatEffect[]
+  concentration?: { name: string; spellId?: string }
+}
+
 /** Legg til en effekt; buff-spells får sine mekaniske effekter på arket så lenge effekten varer */
-export function addEffect(c: CombatState, ch: Character, e: Omit<CombatEffect, 'uid'>, slotLevel = 1): CombatEffect {
+export function addEffect(c: EffectHolder, ch: Character, e: Omit<CombatEffect, 'uid'>, slotLevel = 1): CombatEffect {
   const eff: CombatEffect = { uid: uidc(), ...e }
   const buff = e.spellId ? SPELL_BUFFS[e.spellId] : undefined
   if (buff) {
@@ -274,15 +283,16 @@ export function addEffect(c: CombatState, ch: Character, e: Omit<CombatEffect, '
     })
   }
   if (e.state && !ch.activeStates.includes(e.state)) ch.activeStates.push(e.state)
-  c.effects.push(eff)
+  ;(c.effects ??= []).push(eff)
   return eff
 }
 
 /** Avslutt effekter (utløpt, fjernet, mistet concentration): rydder tilstander og midlertidige effekter */
-export function endEffects(c: CombatState, ch: Character, pred: (e: CombatEffect) => boolean): CombatEffect[] {
-  const gone = c.effects.filter(pred)
+export function endEffects(c: EffectHolder, ch: Character, pred: (e: CombatEffect) => boolean): CombatEffect[] {
+  const all = c.effects ?? []
+  const gone = all.filter(pred)
   if (!gone.length) return gone
-  c.effects = c.effects.filter((e) => !pred(e))
+  c.effects = all.filter((e) => !pred(e))
   const uids = new Set(gone.flatMap((e) => e.charEffects ?? []))
   ch.customEffects = ch.customEffects.filter((x) => !uids.has(x.uid))
   const states = new Set(gone.map((e) => e.state).filter(Boolean))
@@ -294,9 +304,77 @@ export function endEffects(c: CombatState, ch: Character, pred: (e: CombatEffect
 }
 
 /** Mist/avslutt concentration: spellet og effektene det ga, slutter */
-export function dropConcentration(c: CombatState, ch: Character): void {
+export function dropConcentration(c: EffectHolder, ch: Character): void {
   endEffects(c, ch, (e) => !!e.concentration)
   c.concentration = undefined
+}
+
+/* ------------------------------------------------------------------ */
+/* Effekter og concentration utenfor kamp                              */
+/* ------------------------------------------------------------------ */
+
+/** Runder per minutt / time (1 runde = 6 sekunder) */
+export const ROUNDS_PER_MINUTE = 10
+export const ROUNDS_PER_HOUR = 600
+
+/** Tiden går utenfor kamp: effekter teller ned `rounds` runder, utløpte avsluttes og returneres */
+export function tickEffects(h: EffectHolder, ch: Character, rounds: number): CombatEffect[] {
+  for (const e of h.effects ?? []) if (e.rounds !== undefined) e.rounds -= rounds
+  return endEffects(h, ch, (e) => e.rounds !== undefined && e.rounds <= 0)
+}
+
+/** Kampstart: effekter og concentration fra karakteren flyttes inn i kampen */
+export function pickUpEffects(c: CombatState, ch: Character): void {
+  if (ch.effects?.length) c.effects.push(...ch.effects)
+  if (ch.concentration) c.concentration = { name: ch.concentration.name, spellId: ch.concentration.spellId, since: c.round }
+  ch.effects = []
+  ch.concentration = undefined
+}
+
+/** Varer effekten etter kampen? Spells/concentration med mer enn én runde igjen (Shield, Dodge, Rage, Hidden … slutter) */
+export function lastsBeyondCombat(e: CombatEffect): boolean {
+  return !!(e.spellId || e.concentration) && (e.rounds === undefined || e.rounds > 1)
+}
+
+/** Kampslutt: kortvarige kampeffekter slutter, varige effekter og concentration flyttes tilbake til karakteren */
+export function handBackEffects(c: CombatState, ch: Character, now = new Date().toISOString()): CombatEffect[] {
+  const ended = endEffects(c, ch, (e) => !lastsBeyondCombat(e))
+  ch.effects = [...(ch.effects ?? []), ...c.effects]
+  if (c.concentration) ch.concentration = { name: c.concentration.name, spellId: c.concentration.spellId, since: now }
+  c.effects = []
+  c.concentration = undefined
+  return ended
+}
+
+/**
+ * Midlertidig kamptilstand utenfor kamp, bygget rundt karakterens egne effekter og concentration,
+ * slik at spell-/feature-flytene fra kampmodus kan brukes fra arket. Skriv tilbake med settleVirtualCombat.
+ */
+export function virtualCombat(ch: Character, dice: CombatState['dice'] = 'app'): CombatState {
+  const c = newCombat(dice, { uid: 'self', name: ch.name || 'You', init: 0, self: true })
+  c.round = 0
+  c.effects = ch.effects ?? []
+  if (ch.concentration) c.concentration = { name: ch.concentration.name, spellId: ch.concentration.spellId, since: 0 }
+  return c
+}
+
+/** Skriv effekter og concentration fra en midlertidig kamptilstand tilbake til karakteren */
+export function settleVirtualCombat(c: CombatState, ch: Character, now = new Date().toISOString()): void {
+  ch.effects = c.effects
+  const prev = ch.concentration
+  ch.concentration = c.concentration
+    ? { name: c.concentration.name, spellId: c.concentration.spellId, since: prev && prev.name === c.concentration.name && prev.since ? prev.since : now }
+    : undefined
+}
+
+/** Advantage/Disadvantage fra en beregnet verdi: begge = vanlig kast (2024) */
+export function rollModeOf(s?: { advantage?: string[]; disadvantage?: string[] } | null): { mode: 'normal' | 'advantage' | 'disadvantage'; why: string[] } {
+  const adv = s?.advantage ?? []
+  const dis = s?.disadvantage ?? []
+  if (adv.length && dis.length) return { mode: 'normal', why: [...adv, ...dis] }
+  if (adv.length) return { mode: 'advantage', why: adv }
+  if (dis.length) return { mode: 'disadvantage', why: dis }
+  return { mode: 'normal', why: [] }
 }
 
 /* ------------------------------------------------------------------ */

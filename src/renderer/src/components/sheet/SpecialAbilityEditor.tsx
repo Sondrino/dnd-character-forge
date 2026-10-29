@@ -33,13 +33,15 @@ interface Draft {
   recharge: Uses['recharge']
   toggle: boolean
   duration: string
+  /** Krever concentration (avslutter annen concentration når den brukes) */
+  concentration: boolean
   effects: Effect[]
   roll: FeatureRoll | null
   /** Level featuren fås på (subclass: class-level, species: karakter-level) */
   level: string
 }
 
-const blank = (level = ''): Draft => ({ name: '', summary: '', description: '', activation: 'action', uses: '', recharge: 'long', toggle: false, duration: '10', effects: [], roll: null, level })
+const blank = (level = ''): Draft => ({ name: '', summary: '', description: '', activation: 'action', uses: '', recharge: 'long', toggle: false, duration: '10', concentration: false, effects: [], roll: null, level })
 
 function fromFeature(f: Feature): Draft {
   return {
@@ -51,6 +53,7 @@ function fromFeature(f: Feature): Draft {
     recharge: f.uses?.recharge ?? 'long',
     toggle: !!f.toggle,
     duration: f.duration ? String(f.duration) : '10',
+    concentration: !!f.concentration,
     // Betingelsen som gjør effektene av/på legges på ved lagring – vis dem uten
     effects: (f.effects ?? []).map((e) => (f.toggle && e.condition === f.toggle ? { ...e, condition: undefined } : e)),
     roll: f.roll ?? null,
@@ -127,7 +130,8 @@ export function SpecialAbilityEditor({
       effects: f.effects.map((e) => (state && !e.condition ? { ...e, condition: state } : e)),
       roll: f.roll ?? undefined,
       toggle: state,
-      duration: f.toggle && Number(f.duration) > 0 ? Number(f.duration) : undefined,
+      duration: (f.toggle || f.concentration) && Number(f.duration) > 0 ? Number(f.duration) : undefined,
+      ...(f.concentration ? { concentration: true } : {}),
       ...(withLevel && f.level.trim() ? { level: Math.max(1, Math.min(20, Number(f.level) || 1)) } : {})
     }
     if (onSave) {
@@ -231,7 +235,10 @@ export function SpecialAbilityEditor({
         <div className="rounded-xl border border-line-soft p-3">
           <div className="mb-2 flex flex-wrap items-center gap-3">
             <Toggle checked={f.toggle} onChange={(v) => set({ toggle: v })} label={t('ability.toggle')} />
-            {f.toggle && (
+            <label className="flex cursor-pointer items-center gap-2 text-sm" title={t('spellsx.featureConcTip')}>
+              <input type="checkbox" checked={f.concentration} onChange={(e) => set({ concentration: e.target.checked })} /> {t('spellsx.featureConc')}
+            </label>
+            {(f.toggle || f.concentration) && (
               <label className="flex items-center gap-2 text-sm">
                 {t('ability.duration')}
                 <input className="input w-20 text-center" inputMode="numeric" value={f.duration} onChange={(e) => set({ duration: e.target.value.replace(/[^\d]/g, '') })} />

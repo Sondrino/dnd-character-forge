@@ -68,6 +68,7 @@ export function normalizeCharacter(raw: Partial<Character>): Character {
   c.settings = { ...base.settings, ...(raw.settings ?? {}) }
   c.activeStates = raw.activeStates ?? []
   c.adjustments = raw.adjustments ?? {}
+  c.effects = Array.isArray(raw.effects) ? raw.effects : []
   return c
 }
 

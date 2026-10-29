@@ -1,5 +1,6 @@
 import { combatNb } from './combat'
 import { abilityNb } from './ability'
+import { spellsxNb } from './spellsx'
 
 export const nb = {
   nav: { characters: 'Karakterer', compendium: 'Oppslag', homebrew: 'Homebrew', settings: 'Innstillinger', dice: 'Terninger' },
@@ -222,5 +223,6 @@ export const nb = {
     auto: 'Auto', adjustment: 'Justering', fixed: 'Fast', result: 'Resultat'
   },
   combat: combatNb,
-  ability: abilityNb
+  ability: abilityNb,
+  spellsx: spellsxNb
 }

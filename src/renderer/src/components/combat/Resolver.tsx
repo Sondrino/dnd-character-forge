@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Check, Crosshair, Heart, Sparkles, Swords, X } from 'lucide-react'
 import type { Combatant, CombatState, SpellDef, WeaponDef } from '../../types'
@@ -8,19 +8,20 @@ import { Markdown, Modal } from '../ui'
 import { EntityLink } from '../EntityInfo'
 import { RollBox } from './RollBox'
 import { classColumn, featureStates, signed, useCombat, type CombatOption, type Economy } from './useCombat'
-import { SPELL_BUFFS, addEffect, addLog, attacksPerAction, offhandBlocked, castingKind, critDice, dropConcentration, durationRounds, evalAbility, freeCasts, initiativeOrder, resolveDice, spellDamageDice, spellHealDice, spellTempDice, type FreeCast } from '../../lib/combat'
+import { addEffect, addLog, attacksPerAction, offhandBlocked, critDice, dropConcentration, evalAbility, initiativeOrder, resolveDice, rollModeOf } from '../../lib/combat'
+import { SpellCast } from '../CastDialog'
 
 const ABIL: Record<string, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
 
 /** Marker handling/bonus/reaction som brukt */
-function spend(c: CombatState, e: Economy): void {
+export function spend(c: CombatState, e: Economy): void {
   if (e === 'action') c.turn.action = true
   else if (e === 'bonus') c.turn.bonus = true
   else if (e === 'reaction') c.turn.reaction = true
 }
 
 /** Skade på et mål i initiativlista */
-function hurt(c: CombatState, targetUid: string | undefined, amount: number): string {
+export function hurt(c: CombatState, targetUid: string | undefined, amount: number): string {
   const tg = c.combatants.find((x) => x.uid === targetUid)
   if (!tg || tg.self) return ''
   if (tg.hp !== undefined) {
@@ -46,7 +47,7 @@ export function Resolver({ opt, onClose }: { opt: CombatOption | null; onClose: 
   return (
     <Modal open={!!opt} onClose={onClose} title={title} width={720}>
       {opt?.kind === 'attack' && <AttackFlow key={opt.key} opt={opt} onDone={onClose} />}
-      {opt?.kind === 'spell' && <SpellFlow key={opt.key} spell={opt.spell} source={opt.source} onDone={onClose} />}
+      {opt?.kind === 'spell' && <SpellCast key={opt.key} spell={opt.spell} source={opt.source} onDone={onClose} />}
       {opt?.kind === 'feature' && <FeatureFlow key={opt.key} opt={opt} onDone={onClose} />}
       {opt?.kind === 'std' && <StdFlow key={opt.key} id={opt.id} economy={opt.economy} onDone={onClose} />}
     </Modal>
@@ -58,12 +59,12 @@ export function Resolver({ opt, onClose }: { opt: CombatOption | null; onClose: 
 /* ------------------------------------------------------------------ */
 
 /** Advarsel når handlingen er brukt. `attackPer`: dette er et angrep i Attack-handlingen (med så mange angrep) */
-function EconomyWarning({ e, attackPer }: { e: Economy; attackPer?: number }) {
+export function EconomyWarning({ e, attackPer }: { e: Economy; attackPer?: number }) {
   const { t } = useTranslation()
-  const { char, c } = useCombat()
+  const { char, c, outOfCombat } = useCombat()
   const noAttacksLeft = !!attackPer && c.turn.attacks >= attackPer
   const used =
-    e === 'action'
+    outOfCombat ? false : e === 'action'
       ? attackPer
         ? c.turn.action && (c.turn.attacks === 0 || noAttacksLeft)
         : c.turn.action
@@ -92,8 +93,9 @@ function EconomyWarning({ e, attackPer }: { e: Economy; attackPer?: number }) {
 
 function TargetPicker({ value, onChange, multi = false, values, onMulti }: { value?: string; onChange?: (v: string | undefined) => void; multi?: boolean; values?: string[]; onMulti?: (v: string[]) => void }) {
   const { t } = useTranslation()
-  const { c } = useCombat()
+  const { c, outOfCombat } = useCombat()
   const foes = initiativeOrder(c.combatants).filter((x) => !x.self && !x.defeated)
+  if (outOfCombat) return null
   if (!foes.length) return <p className="mb-3 text-xs text-muted">{t('combat.noTargetsHint')}</p>
   const on = (uid: string): boolean => (multi ? !!values?.includes(uid) : value === uid)
   return (
@@ -117,7 +119,7 @@ function TargetPicker({ value, onChange, multi = false, values, onMulti }: { val
   )
 }
 
-function Warn({ text }: { text: string }) {
+export function Warn({ text }: { text: string }) {
   return (
     <div className="mb-3 flex items-center gap-2 rounded-xl border border-crimson/40 bg-crimson/10 px-3 py-2 text-sm text-crimson-2">
       <AlertTriangle size={14} className="shrink-0" /> {text}
@@ -139,10 +141,12 @@ interface AttackSetup {
   mastery?: string
   /** Sneak Attack krever et Finesse- eller ranged-våpen */
   sneakOk?: boolean
+  /** Advantage/Disadvantage-kilder for angrepsrullet (conditions o.l.) */
+  roll?: { advantage?: string[]; disadvantage?: string[] } | null
 }
 
 /** Angrepsrull + treff/bom + skade, felles for våpen og spell attacks */
-function AttackRoll({ setup, onFinish, finishLabel }: { setup: AttackSetup; onFinish: (r: { hit: boolean; crit: boolean; damage: number; target?: string }) => void; finishLabel: string }) {
+export function AttackRoll({ setup, onFinish, finishLabel }: { setup: AttackSetup; onFinish: (r: { hit: boolean; crit: boolean; damage: number; target?: string }) => void; finishLabel: string }) {
   const { t } = useTranslation()
   const { char, lookup: L, c, mut, physical } = useCombat()
   const [target, setTarget] = useState<string | undefined>(c.combatants.find((x) => !x.self && !x.defeated)?.uid)
@@ -159,6 +163,7 @@ function AttackRoll({ setup, onFinish, finishLabel }: { setup: AttackSetup; onFi
   const [useMark, setUseMark] = useState(!!markDie)
   const ac = c.combatants.find((x) => x.uid === target)?.ac
   const blessed = c.effects.some((e) => e.spellId === 'bless')
+  const rm = rollModeOf(setup.roll)
 
   const onAttack = (v: number | null, r?: RollResult): void => {
     setAtk(v)
@@ -186,6 +191,8 @@ function AttackRoll({ setup, onFinish, finishLabel }: { setup: AttackSetup; onFi
         d20
         character={char.name}
         hint={ac !== undefined ? t('combat.vsAC', { ac }) : undefined}
+        initialMode={rm.mode}
+        modeWhy={rm.why}
         autoFocus
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -303,7 +310,7 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
       )}
       <AttackRoll
         key={a.key}
-        setup={{ name: a.name, bonus: a.bonus?.value ?? 0, damage, damageType: a.damageType, melee: !ranged, str: usesStr, mastery: a.masteryActive ? a.mastery : undefined, sneakOk: ranged || a.properties.includes('finesse') }}
+        setup={{ name: a.name, bonus: a.bonus?.value ?? 0, damage, damageType: a.damageType, melee: !ranged, str: usesStr, mastery: a.masteryActive ? a.mastery : undefined, sneakOk: ranged || a.properties.includes('finesse'), roll: a.bonus }}
         finishLabel={t('combat.finishAttack')}
         onFinish={(r) => {
           mut((cc) => {
@@ -337,147 +344,7 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
 /* Spells                                                              */
 /* ------------------------------------------------------------------ */
 
-function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: string; onDone: () => void }) {
-  const { t } = useTranslation()
-  const { char, derived: d, lookup: L, c, mut, physical } = useCombat()
-  const free = useMemo(() => freeCasts(char, d, L, sp), [char, d, L, sp])
-  const freeLeft = free.filter((f) => f.left === null || f.left > 0)
-  const kind = castingKind(sp.castingTime)
-  const econ: Economy = kind === 'long' ? 'action' : kind
-  const srcCaster = d.spellSources[source]
-  const caster =
-    d.spellcasting.find((s) => s.classId === source) ??
-    (srcCaster ? { ...d.spellcasting[0], ability: srcCaster.ability, mod: srcCaster.mod, dc: { value: srcCaster.dc }, attack: { value: srcCaster.attack } } as unknown as (typeof d.spellcasting)[number] : d.spellcasting[0])
-  const slotOpts = useMemo(() => {
-    if (sp.level === 0) return []
-    const o: { id: string; level: number; label: string; pact?: boolean; free?: FreeCast }[] = []
-    for (const f of freeLeft) o.push({ id: f.id, level: sp.level, free: f, label: t('combat.freeCast', { name: f.label, left: f.left === null ? t('combat.atWill') : `${f.left}/${f.max}` }) })
-    for (const s of d.slots) if (s.level >= sp.level && s.max - s.used > 0) o.push({ id: `s${s.level}`, level: s.level, label: t('combat.slotLevel', { n: s.level, left: s.max - s.used }) })
-    if (d.pact && d.pact.level >= sp.level && d.pact.count - d.pact.used > 0) o.push({ id: 'pact', level: d.pact.level, pact: true, label: t('combat.pactSlot', { n: d.pact.level, left: d.pact.count - d.pact.used }) })
-    o.push({ id: 'free', level: sp.level, label: t('combat.noSlot') })
-    return o
-  }, [d.slots, d.pact, sp.level, free])
-  const [slot, setSlot] = useState(slotOpts[0]?.id ?? 'free')
-  const slotLevel = slotOpts.find((o) => o.id === slot)?.level ?? sp.level
-  const [phase, setPhase] = useState<'cast' | 'resolve'>('cast')
-  const rounds = durationRounds(sp.duration)
-
-  const cast = (): void => {
-    mut((cc, ch) => {
-      const o = slotOpts.find((x) => x.id === slot)
-      if (o?.free) {
-        if (o.free.useKey) ch.featureUses[o.free.useKey] = (ch.featureUses[o.free.useKey] ?? 0) + 1
-      } else if (o && o.id !== 'free') {
-        if (o.pact) ch.pactSlotsUsed += 1
-        else ch.spellSlotsUsed[o.level - 1] = (ch.spellSlotsUsed[o.level - 1] ?? 0) + 1
-        cc.turn.slotUsed = true
-      }
-      spend(cc, econ)
-      if (sp.concentration) {
-        dropConcentration(cc, ch)
-        cc.concentration = { name: sp.name, spellId: sp.id, since: cc.round }
-      }
-      // Aid legges på i neste steg (bare hvis du selv er et av målene)
-      if (sp.id !== 'aid' && ((rounds && rounds > 1) || SPELL_BUFFS[sp.id] || sp.concentration)) addEffect(cc, ch, { name: sp.name, rounds, concentration: sp.concentration, spellId: sp.id }, slotLevel)
-      cc.stats.spells += 1
-      const how = o?.free ? t('combat.log.free', { name: o.free.label }) : sp.level > 0 ? t('combat.log.slot', { n: slotLevel }) : ''
-      addLog(cc, 'spell', `${sp.name}${how ? ` (${how})` : ''}`)
-    })
-    if (sp.attack || sp.save || sp.heal || sp.damage || sp.tempHp || sp.id === 'aid') setPhase('resolve')
-    else onDone()
-  }
-
-  const dmgDice = spellDamageDice(sp, slotLevel, d.totalLevel)
-  return (
-    <div>
-      {phase === 'cast' && (
-        <>
-          <EconomyWarning e={econ} />
-          {char.activeStates.includes('raging') && <Warn text={t('combat.ragingNoSpells')} />}
-          {d.armorNotProficient && sp.level >= 0 && <Warn text={t('combat.armorNoSpells')} />}
-          {freeLeft.length > 0 && (
-            <div className="glow mb-3 rounded-xl border border-good/50 bg-good/10 px-3 py-2 text-sm text-good">
-              ✦ {t('combat.freeOffer', { spell: sp.name, name: freeLeft.map((f) => f.label).join(' / ') })}
-            </div>
-          )}
-          {free.length > 0 && !freeLeft.length && <p className="mb-3 text-xs text-muted">{t('combat.freeUsedUp', { name: free.map((f) => f.label).join(', ') })}</p>}
-          {sp.level > 0 && c.turn.slotUsed && !slotOpts.find((x) => x.id === slot)?.free && (
-            <div className="mb-3 flex items-center gap-2 rounded-xl border border-crimson/40 bg-crimson/10 px-3 py-2 text-sm text-crimson-2">
-              <AlertTriangle size={14} /> {t('combat.oneSlotRule')}
-            </div>
-          )}
-          {sp.concentration && c.concentration && (
-            <div className="mb-3 rounded-xl border border-arcane/40 bg-arcane/10 px-3 py-2 text-sm">{t('combat.replaceConc', { name: c.concentration.name })}</div>
-          )}
-          <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-            <Fact k={t('combat.castTime')} v={sp.castingTime.split(',')[0]} />
-            <Fact k={t('combat.range')} v={sp.range} />
-            <Fact k={t('combat.duration')} v={sp.duration} />
-            <Fact k={t('combat.level')} v={sp.level === 0 ? 'Cantrip' : String(sp.level)} />
-          </div>
-          <p className="mb-3 text-sm">{sp.summary}</p>
-          {sp.level > 0 && (
-            <div className="mb-3">
-              <div className="panel-title mb-1">{t('combat.chooseSlot')}</div>
-              <div className="flex flex-wrap gap-1">
-                {slotOpts.map((o) => (
-                  <button key={o.id} className={`btn btn-sm ${slot === o.id ? 'btn-primary' : ''}`} onClick={() => setSlot(o.id)}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-              {slotOpts.length === 1 && <p className="mt-1 text-xs text-crimson-2">{t('combat.noSlotsLeft')}</p>}
-              {slotOpts.find((x) => x.id === slot)?.free && <p className="mt-1 text-xs text-good">{t('combat.freeNoSlot')}</p>}
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <EntityLink kind="spell" id={sp.id}>
-              {t('combat.fullText')}
-            </EntityLink>
-            <button className="btn btn-primary" onClick={cast}>
-              <Sparkles size={14} /> {t('combat.cast')}
-            </button>
-          </div>
-        </>
-      )}
-      {phase === 'resolve' && sp.attack && (
-        <AttackRoll
-          setup={{ name: sp.name, bonus: caster?.attack.value ?? 0, damage: dmgDice, damageType: sp.damage?.type ? String(sp.damage.type) : undefined, melee: sp.attack === 'melee', str: false }}
-          finishLabel={t('common.done')}
-          onFinish={(r) => {
-            mut((cc) => {
-              const who = hurt(cc, r.target, r.damage)
-              if (r.hit) {
-                cc.stats.hits += 1
-                cc.stats.dealt += r.damage
-                if (r.crit) cc.stats.crits += 1
-              } else cc.stats.misses += 1
-              addLog(cc, 'attack', `${sp.name}: ${r.hit ? (r.crit ? t('combat.log.crit') : t('combat.log.hit')) : t('combat.log.miss')}${who ? ` ${who}` : ''}${r.hit ? ` – ${r.damage} ${sp.damage?.type ?? ''}` : ''}`)
-            })
-            onDone()
-          }}
-        />
-      )}
-      {phase === 'resolve' && !sp.attack && !sp.tempHp && (sp.save || (sp.damage && !sp.heal)) && <SaveSpell sp={sp} dc={caster?.dc.value ?? 10} dice={dmgDice} onDone={onDone} />}
-      {phase === 'resolve' && !sp.attack && !sp.save && sp.heal && <HealSpell sp={sp} dice={spellHealDice(sp, slotLevel, caster?.mod ?? 0)} onDone={onDone} />}
-      {phase === 'resolve' && !sp.attack && !sp.heal && sp.tempHp && <TempSpell sp={sp} dice={spellTempDice(sp, slotLevel, caster?.mod ?? 0)} onDone={onDone} />}
-      {phase === 'resolve' && sp.id === 'aid' && <AidSpell slotLevel={slotLevel} onDone={onDone} />}
-      {void physical}
-      {void char}
-    </div>
-  )
-}
-
-function Fact({ k, v }: { k: string; v: string }) {
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-widest text-muted">{k}</div>
-      <div>{v}</div>
-    </div>
-  )
-}
-
-function SaveSpell({ sp, dc, dice, onDone }: { sp: SpellDef; dc: number; dice?: string; onDone: () => void }) {
+export function SaveSpell({ sp, dc, dice, onDone }: { sp: SpellDef; dc: number; dice?: string; onDone: () => void }) {
   const { t } = useTranslation()
   const { char, c, mut, physical } = useCombat()
   const [targets, setTargets] = useState<string[]>([])
@@ -545,7 +412,7 @@ function SaveSpell({ sp, dc, dice, onDone }: { sp: SpellDef; dc: number; dice?: 
   )
 }
 
-function HealSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: () => void }) {
+export function HealSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: () => void }) {
   const { t } = useTranslation()
   const { char, derived: d, c, mut, physical } = useCombat()
   const all = /^all$/i.test(sp.heal ?? '')
@@ -594,7 +461,7 @@ function HealSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: 
 }
 
 /** Spells som gir Temporary Hit Points (False Life, Armor of Agathys, Heroism, Power Word Fortify …) */
-function TempSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: () => void }) {
+export function TempSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: () => void }) {
   const { t } = useTranslation()
   const { char, c, mut, physical } = useCombat()
   const selfOnly = /^self$/i.test(sp.range)
@@ -649,7 +516,7 @@ function TempSpell({ sp, dice, onDone }: { sp: SpellDef; dice?: string; onDone: 
 }
 
 /** Aid: maks HP og nåværende HP øker med 5 per slot-nivå over 1 (5 på nivå 2) */
-function AidSpell({ slotLevel, onDone }: { slotLevel: number; onDone: () => void }) {
+export function AidSpell({ slotLevel, onDone }: { slotLevel: number; onDone: () => void }) {
   const { t } = useTranslation()
   const { mut } = useCombat()
   const n = 5 * (slotLevel - 1)
@@ -727,6 +594,7 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
       <EconomyWarning e={econ} />
       {heavyArmor && <Warn text={t('combat.rageHeavy')} />}
       {isRage && c.concentration && <Warn text={t('combat.rageConc', { name: c.concentration.name })} />}
+      {f.concentration && c.concentration && <div className="rounded-xl border border-arcane/40 bg-arcane/10 px-3 py-2 text-sm">{t('combat.replaceConc', { name: c.concentration.name })}</div>}
       <div className="flex flex-wrap gap-2 text-xs">
         {econ !== 'free' && <span className="chip">{t(`combat.econ.${econ}`)}</span>}
         {f.uses && (
@@ -734,6 +602,7 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
             {t('combat.usesLeft', { n: left, max: f.uses.max })} · {t(`combat.recharge.${f.uses.recharge}`)}
           </span>
         )}
+        {f.concentration && <span className="chip border-arcane/50 text-arcane">Concentration</span>}
         {states.map((s) => (
           <span key={s} className="chip border-gold/50 text-gold">
             {t('combat.turnsOn', { state: s })}
@@ -779,7 +648,13 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
                 addLog(cc, 'info', t('combat.log.concLost', { name: cc.concentration.name }))
                 dropConcentration(cc, ch)
               }
-              if (states.length || isRage) addEffect(cc, ch, { name: f.name, rounds, state: states[0] })
+              // Evner med concentration (egne evner, homebrew): som spells – avslutter annen concentration
+              if (f.concentration) {
+                if (cc.concentration) addLog(cc, 'info', t('combat.log.concLost', { name: cc.concentration.name }))
+                dropConcentration(cc, ch)
+                cc.concentration = { name: f.name, since: cc.round }
+              }
+              if (states.length || isRage || f.concentration) addEffect(cc, ch, { name: f.name, rounds, state: states[0], concentration: f.concentration })
               const rolled = heal ? (healAmt ?? 0) : poolHeal ? spendN : Number(extraHeal) || 0
               const tempGain = Number(extraTemp) || 0
               if (tempGain) ch.hp.temp = Math.max(ch.hp.temp, tempGain)
@@ -817,7 +692,7 @@ function FeatureRollStep({ f, onDone }: { f: Extract<CombatOption, { kind: 'feat
   if (r.kind === 'attack')
     return (
       <AttackRoll
-        setup={{ name: f.name, bonus: evalAbility(r.attack || 'prof', d) ?? 0, damage: dice, damageType: r.damageType, melee: r.melee !== false, str: false }}
+        setup={{ name: f.name, bonus: evalAbility(r.attack || 'prof', d) ?? 0, damage: dice, damageType: r.damageType, melee: r.melee !== false, str: false, roll: d.attacks.find((x) => x.kind === 'unarmed')?.bonus }}
         finishLabel={t('combat.finishAttack')}
         onFinish={(res) => {
           mut((cc) => {
@@ -861,7 +736,7 @@ function StdFlow({ id, economy, onDone }: { id: string; economy: Economy; onDone
       )}
       {id === 'dash' && <p className="text-sm">{t('combat.dashText', { n: d.speed.value })}</p>}
       {id === 'hide' && (
-        <RollBox label="Dexterity (Stealth)" notation={`1d20${signed(d.skills.stealth.value)}`} value={stealth} onValue={(v) => setStealth(v)} physical={physical} d20 character={char.name} hint="DC 15" />
+        <RollBox label="Dexterity (Stealth)" notation={`1d20${signed(d.skills.stealth.value)}`} value={stealth} onValue={(v) => setStealth(v)} physical={physical} d20 character={char.name} hint="DC 15" initialMode={rollModeOf(d.skills.stealth).mode} modeWhy={rollModeOf(d.skills.stealth).why} />
       )}
       {id === 'hide' && stealth !== null && <p className={`text-sm ${stealth >= 15 ? 'text-good' : 'text-bad'}`}>{stealth >= 15 ? t('combat.hidden') : t('combat.notHidden')}</p>}
       {id === 'ready' && <input className="input" placeholder={t('combat.readyPlaceholder')} value={note} onChange={(e) => setNote(e.target.value)} />}

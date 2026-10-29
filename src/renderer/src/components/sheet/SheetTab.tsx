@@ -10,10 +10,12 @@ import { useChar } from './context'
 import { BigStat, StatValue } from '../Stat'
 import { AnimatedNumber, Section, Tip, NumberInput } from '../ui'
 import { useRolls } from '../../store/rolls'
+import { useUi } from '../../store/ui'
 import { d20 } from '../../dice'
 import { EntityLink } from '../EntityInfo'
 import { applyDamage, deathSave } from '../../lib/combat'
 import type { DerivedAttack, DerivedFeature } from '../../engine/compute'
+import { ActiveEffects } from './ActiveEffects'
 
 export function SheetTab() {
   return (
@@ -81,6 +83,7 @@ function TopBand() {
           </motion.span>
         </button>
       </div>
+      <ActiveEffects />
       <div className="col-span-12 flex flex-wrap items-center gap-2 text-xs text-muted">
         <span className="chip">
           <Ruler size={11} /> {t('sheet.size')}: {d.size}
@@ -111,13 +114,16 @@ function HpBox() {
   const max = d.hpMax.value
   const pct = max ? Math.max(0, Math.min(1, char.hp.current / max)) : 0
   const [flash, setFlash] = useState<'dmg' | 'heal' | null>(null)
+  const notify = useUi((s) => s.notify)
   const apply = (kind: 'dmg' | 'heal' | 'temp'): void => {
+    let concDC: number | undefined
     update((c) => {
       if (kind === 'heal') c.hp.current = Math.min(max, Math.max(0, c.hp.current) + amount)
       else if (kind === 'temp') c.hp.temp = Math.max(c.hp.temp, amount)
       else {
         // Samme regler som i kampmodus: temp HP først, 0 HP = bevisstløs, skade på 0 HP = death save-feil
-        const r = applyDamage({ current: c.hp.current, temp: c.hp.temp, max, amount, resistances: [], immunities: [], vulnerabilities: [], concentrating: false })
+        const r = applyDamage({ current: c.hp.current, temp: c.hp.temp, max, amount, resistances: [], immunities: [], vulnerabilities: [], concentrating: !!(c.combat?.concentration ?? c.concentration) })
+        concDC = r.concentrationDC
         c.hp.current = r.current
         c.hp.temp = r.temp
         if (r.droppedToZero && !c.conditions.includes('unconscious')) c.conditions.push('unconscious')
@@ -128,6 +134,7 @@ function HpBox() {
         c.conditions = c.conditions.filter((x) => x !== 'unconscious')
       }
     })
+    if (concDC) notify(t('spellsx.concSave', { dc: concDC }), 'info')
     if (kind !== 'temp') {
       setFlash(kind)
       setTimeout(() => setFlash(null), 450)

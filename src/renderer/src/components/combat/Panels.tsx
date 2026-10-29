@@ -9,7 +9,7 @@ import { EntityLink } from '../EntityInfo'
 import { RollBox } from './RollBox'
 import { healSelf } from './Resolver'
 import { signed, useCombat } from './useCombat'
-import { addEffect, addLog, applyDamage, deathSave, dropConcentration, endEffects, initiativeOrder, uidc } from '../../lib/combat'
+import { addEffect, addLog, applyDamage, deathSave, dropConcentration, endEffects, initiativeOrder, rollModeOf, uidc } from '../../lib/combat'
 import { useRolls } from '../../store/rolls'
 import { EntityPicker } from '../EntityPicker'
 import type { CreatureDef } from '../../types'
@@ -228,7 +228,7 @@ function ConcentrationCheck({ dc, onClose }: { dc: number | null; onClose: () =>
   return (
     <Modal open={dc !== null && !!c.concentration} onClose={onClose} title={t('combat.concCheck')} width={560}>
       <p className="mb-3 text-sm">{t('combat.concCheckText', { name: c.concentration?.name ?? '', dc })}</p>
-      <RollBox label="Constitution save" notation={`1d20${signed(bonus)}`} value={v} onValue={(x) => setV(x)} physical={physical} d20 character={char.name} hint={`DC ${dc}`} autoFocus />
+      <RollBox label="Constitution save" notation={`1d20${signed(bonus)}`} value={v} onValue={(x) => setV(x)} physical={physical} d20 character={char.name} hint={`DC ${dc}`} initialMode={rollModeOf(d.saves.con).mode} modeWhy={rollModeOf(d.saves.con).why} autoFocus />
       {v !== null && dc !== null && <p className={`mt-2 text-sm ${v >= dc ? 'text-good' : 'text-bad'}`}>{v >= dc ? t('combat.concOk') : t('combat.concFail')}</p>}
       <div className="mt-3 flex justify-end gap-2">
         <button className="btn border-bad/50 text-bad" onClick={() => decide(false)}>

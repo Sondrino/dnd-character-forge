@@ -13,7 +13,7 @@ import { RollBox } from '../components/combat/RollBox'
 import { Resolver } from '../components/combat/Resolver'
 import { InitiativePanel, LogPanel, StatsPanel, StatusPanel, VitalsPanel } from '../components/combat/Panels'
 import { combatOptions, signed, useCombat, type CombatOption } from '../components/combat/useCombat'
-import { addLog, advanceTurn, castingKind, endEffects, freeCasts, initiativeOrder, movementLeft, newCombat, offhandBlocked, startOwnTurn } from '../lib/combat'
+import { addLog, advanceTurn, castingKind, freeCasts, handBackEffects, initiativeOrder, movementLeft, newCombat, offhandBlocked, pickUpEffects, rollModeOf, startOwnTurn } from '../lib/combat'
 
 export default function CombatPage() {
   const { id } = useParams()
@@ -40,12 +40,16 @@ function StartCombat({ onCancel }: { onCancel: () => void }) {
   const [dice, setDice] = useState<'physical' | 'app' | null>(last ?? null)
   const [init, setInit] = useState<number | null>(null)
   const adv = !!d.initiative.advantage?.length
+  const initMode = rollModeOf(d.initiative)
   const start = (): void => {
     if (!dice) return
     setSettings({ combatDice: dice })
     update((ch) => {
       const c = newCombat(dice, { uid: 'self', name: ch.name || 'You', init: init ?? 10, self: true })
       addLog(c, 'turn', t('combat.log.start', { n: init ?? 10 }))
+      // Spells kastet før kampen (concentration, buffs med varighet) fortsetter i kampen
+      if (ch.concentration || ch.effects?.length) addLog(c, 'info', t('spellsx.log.carriedIn', { names: [ch.concentration?.name, ...(ch.effects ?? []).map((e) => e.name)].filter((x, i, a) => x && a.indexOf(x) === i).join(', ') }))
+      pickUpEffects(c, ch)
       ch.combat = c
     })
   }
@@ -84,6 +88,8 @@ function StartCombat({ onCancel }: { onCancel: () => void }) {
               d20
               character={char.name}
               hint={adv ? t('combat.initAdv', { src: d.initiative.advantage!.join(', ') }) : undefined}
+              initialMode={initMode.mode}
+              modeWhy={initMode.mode === 'advantage' ? undefined : initMode.why}
               autoFocus
             />
           </motion.div>
@@ -451,10 +457,9 @@ function EndCombat({ open, onClose }: { open: boolean; onClose: () => void }) {
   const end = (rest: boolean): void => {
     update((ch: Character) => {
       if (!ch.combat) return
-      // Kampeffekter (Rage, Shield, Dodge …) slutter. Lange buffs (Aid, Longstrider …) beholdes som
-      // egne effekter på arket – de kan slås av under «Egne» når de går ut.
-      const lasting = new Set(ch.combat.effects.filter((e) => e.charEffects?.length && (e.rounds === undefined || e.rounds > 10)).map((e) => e.uid))
-      endEffects(ch.combat, ch, (e) => !lasting.has(e.uid))
+      // Kampeffekter (Rage, Shield, Dodge …) slutter. Spells som varer (Aid, Bless, Mage Armor …) og
+      // concentration flyttes tilbake til karakteren og vises på arket med gjenværende tid.
+      handBackEffects(ch.combat, ch)
       ch.combat = undefined
     })
     if (anim) confetti({ particleCount: 70, spread: 70, origin: { y: 0.4 } })

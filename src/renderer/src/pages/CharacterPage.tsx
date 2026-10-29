@@ -22,6 +22,9 @@ import { ClassEmblem } from '../components/ClassEmblem'
 import { EntityLink } from '../components/EntityInfo'
 import { api } from '../lib/api'
 import { syncGrantedSpells } from '../lib/sync'
+import { applySlotRecovery, effectsEndingOnRest, grantsInspirationOnLongRest, hitDieHeal, passRestTime, recoveryTotal, recoveryValid, slotRecoveryOptions } from '../lib/rest'
+import { RollBox } from '../components/combat/RollBox'
+import { DiceModeToggle } from '../components/CastDialog'
 import type { Character } from '../types'
 import type { Derived } from '../engine/compute'
 
@@ -301,6 +304,8 @@ function applyRest(c: Character, kind: 'short' | 'long', d: Derived, hdSpent: Re
     }
   }
   c.pactSlotsUsed = 0
+  // Tiden går: effekter utenfor kamp teller ned (Long Rest: concentration slutter når du sover)
+  if (!c.combat) passRestTime(c, kind)
   if (kind === 'long') {
     // Gratis-kast fra feats, species og Mystic Arcanum (1 gang per long rest)
     for (const k of Object.keys(c.featureUses)) if (k.startsWith('free:')) delete c.featureUses[k]
@@ -311,6 +316,8 @@ function applyRest(c: Character, kind: 'short' | 'long', d: Derived, hdSpent: Re
     if (c.exhaustion > 0) c.exhaustion -= 1
     // Gjenvinn alle Hit Dice (2024)
     c.hitDiceUsed = {}
+    // Resourceful (Human): Heroic Inspiration etter hver Long Rest
+    if (grantsInspirationOnLongRest(d)) c.heroicInspiration = true
   } else {
     for (const [die, n] of Object.entries(hdSpent)) c.hitDiceUsed[die] = (c.hitDiceUsed[die] ?? 0) + n
   }
@@ -321,21 +328,38 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
   const ctx = useContext(Ctx)!
   const { char, derived: d, update } = ctx
   const notify = useUi((s) => s.notify)
+  const physical = (useSettings((s) => s.combatDice) ?? 'app') === 'physical'
   const [spent, setSpent] = useState<Record<string, number>>({})
   const [healed, setHealed] = useState(0)
+  const [hdRoll, setHdRoll] = useState<Record<string, number | null>>({})
+  // Arcane Recovery / Natural Recovery: valgte slots per nivå
+  const [picks, setPicks] = useState<Record<string, Record<number, number>>>({})
   useEffect(() => {
     setSpent({})
     setHealed(0)
+    setHdRoll({})
+    setPicks({})
   }, [kind])
   if (!kind) return <Modal open={false} onClose={onClose}>{null}</Modal>
   const recharge = d.features.filter((f) => f.uses && f.uses.used > 0 && (kind === 'long' || f.uses.recharge === 'short' || f.uses.recharge === 'shortOrLong' || f.uses.recharge === 'shortOne'))
   const slotsBack = (kind === 'long' && d.slots.some((s) => s.used)) || !!d.pact?.used
+  const recoveries = kind === 'short' ? slotRecoveryOptions(char, d) : []
+  const usedSlots = d.slots.filter((s) => s.used > 0)
+  const ending = char.combat ? [] : effectsEndingOnRest(char, kind)
+  const inspiration = kind === 'long' && grantsInspirationOnLongRest(d) && !char.heroicInspiration
+  const spendDie = (die: number, total: number): void => {
+    const gain = hitDieHeal(total)
+    setHealed((x) => x + gain)
+    setSpent((s) => ({ ...s, [die]: (s[die] ?? 0) + 1 }))
+    setHdRoll((r) => ({ ...r, [die]: null }))
+    notify(t('spellsx.rest.hdGain', { die, n: gain }), 'good')
+  }
   return (
     <Modal
       open={!!kind}
       onClose={onClose}
       title={kind === 'short' ? t('rest.short') : t('rest.long')}
-      width={560}
+      width={600}
       footer={
         <>
           <button className="btn" onClick={onClose}>
@@ -345,10 +369,15 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
             className="btn btn-primary"
             onClick={() => {
               update((c) => {
+                for (const r of recoveries) {
+                  const p = picks[r.id]
+                  if (p && r.available && recoveryValid(p, r, d.slots)) applySlotRecovery(c, r, p)
+                }
                 applyRest(c, kind, d, spent)
                 if (kind === 'short') c.hp.current = Math.min(d.hpMax.value, c.hp.current + healed)
               })
               notify(kind === 'short' ? t('rest.shortDone') : t('rest.longDone'), 'good')
+              if (ending.length) notify(t('spellsx.expired', { names: ending.map((e) => e.name).join(', ') }), 'info')
               onClose()
             }}
           >
@@ -362,34 +391,95 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
         {char.hp.current <= 0 && <p className="rounded-lg border border-bad/40 bg-bad/10 px-3 py-2 text-bad">{t('rest.needHp')}</p>}
         {kind === 'short' && (
           <div className="rounded-xl border border-line-soft p-3">
-            <div className="panel-title mb-2">{t('sheet.hitDice')}</div>
-            {d.hitDice.map((h) => {
-              const left = h.total - h.used - (spent[h.die] ?? 0)
-              return (
-                <div key={h.die} className="flex items-center gap-2">
-                  <span>
-                    d{h.die}: {left}/{h.total}
-                  </span>
-                  <button
-                    className="btn btn-sm ml-auto"
-                    disabled={left <= 0}
-                    onClick={() => {
-                      const r = 1 + Math.floor(Math.random() * h.die)
-                      const gain = Math.max(1, r + d.abilities.con.mod)
-                      setHealed((x) => x + gain)
-                      setSpent((s) => ({ ...s, [h.die]: (s[h.die] ?? 0) + 1 }))
-                      notify(`d${h.die}: ${r} ${d.abilities.con.mod >= 0 ? '+' : ''}${d.abilities.con.mod} = ${gain} HP`, 'good')
-                    }}
-                  >
-                    🎲 {t('rest.spend')}
-                  </button>
-                </div>
-              )
-            })}
+            <div className="mb-2 flex items-center gap-2">
+              <div className="panel-title">{t('sheet.hitDice')}</div>
+              <span className="ml-auto">
+                <DiceModeToggle className="" />
+              </span>
+            </div>
+            <div className="space-y-2">
+              {d.hitDice.map((h) => {
+                const left = h.total - h.used - (spent[h.die] ?? 0)
+                const v = hdRoll[h.die] ?? null
+                return (
+                  <div key={h.die} className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-muted">
+                      d{h.die}: {left}/{h.total} {t('spellsx.rest.left')}
+                    </div>
+                    {left > 0 ? (
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <RollBox
+                            label={t('spellsx.rest.hitDie', { die: h.die })}
+                            notation={`1d${h.die}${d.abilities.con.mod >= 0 ? '+' : ''}${d.abilities.con.mod}`}
+                            value={v}
+                            onValue={(x, r) => {
+                              // Rullet i appen (3D-terninger + logg): brukes med en gang
+                              if (r && x !== null) spendDie(h.die, x)
+                              else setHdRoll((s) => ({ ...s, [h.die]: x }))
+                            }}
+                            physical={physical}
+                            character={char.name}
+                            hint={t('spellsx.rest.min1')}
+                          />
+                        </div>
+                        {(physical || v !== null) && (
+                          <button className="btn btn-primary btn-sm mb-3" disabled={v === null} onClick={() => v !== null && spendDie(h.die, v)}>
+                            {t('rest.spend')}
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
             {healed > 0 && <div className="mt-2 text-good">+{healed} HP</div>}
           </div>
         )}
-        {(recharge.length > 0 || slotsBack) && (
+        {recoveries.map((r) => {
+          const p = picks[r.id] ?? {}
+          const total = recoveryTotal(p)
+          const setN = (level: number, n: number): void => setPicks((x) => ({ ...x, [r.id]: { ...(x[r.id] ?? {}), [level]: n } }))
+          return (
+            <div key={r.id} className="rounded-xl border border-arcane/40 bg-arcane/5 p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="font-semibold text-arcane">{r.name}</span>
+                <span className="ml-auto text-xs text-muted">{t('spellsx.rest.budget', { n: total, max: r.budget })}</span>
+              </div>
+              {!r.available ? (
+                <p className="text-xs text-muted">{t('spellsx.rest.recoveryUsed')}</p>
+              ) : !usedSlots.length ? (
+                <p className="text-xs text-muted">{t('spellsx.rest.noSlotsUsed')}</p>
+              ) : (
+                <>
+                  <p className="mb-2 text-xs text-muted">{t('spellsx.rest.recoveryText', { n: r.budget })}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {usedSlots.map((s) => {
+                      const n = p[s.level] ?? 0
+                      const tooHigh = s.level > r.maxLevel
+                      const canAdd = !tooHigh && n < s.used && total + s.level <= r.budget
+                      return (
+                        <div key={s.level} className={`flex items-center gap-1 rounded-lg border px-2 py-1 ${n ? 'border-arcane text-arcane' : 'border-line-soft'} ${tooHigh ? 'opacity-40' : ''}`} title={tooHigh ? t('spellsx.rest.noHigh') : undefined}>
+                          <span className="text-xs">Level {s.level}</span>
+                          <button className="btn btn-ghost btn-sm px-1" disabled={!n} onClick={() => setN(s.level, n - 1)}>
+                            −
+                          </button>
+                          <span className="w-4 text-center font-display">{n}</span>
+                          <button className="btn btn-ghost btn-sm px-1" disabled={!canAdd} onClick={() => setN(s.level, n + 1)}>
+                            +
+                          </button>
+                          <span className="text-[10px] text-muted">/ {s.used}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )
+        })}
+        {(recharge.length > 0 || slotsBack || inspiration) && (
           <div>
             <div className="panel-title mb-1">{t('rest.recharges')}</div>
             <div className="flex flex-wrap gap-1">
@@ -401,10 +491,23 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
               ))}
               {kind === 'long' && d.slots.some((s) => s.used) && <span className="chip">Spell Slots</span>}
               {d.pact?.used ? <span className="chip">Pact Slots</span> : null}
+              {inspiration && <span className="chip border-gold/60 text-gold">★ Heroic Inspiration (Resourceful)</span>}
             </div>
           </div>
         )}
-        {void char}
+        {ending.length > 0 && (
+          <div>
+            <div className="panel-title mb-1">{t('spellsx.rest.effectsEnd')}</div>
+            <div className="flex flex-wrap gap-1">
+              {ending.map((e) => (
+                <span key={e.uid} className="chip text-muted">
+                  {e.name}
+                </span>
+              ))}
+              {kind === 'long' && char.concentration && !ending.some((e) => e.concentration) && <span className="chip text-muted">{char.concentration.name}</span>}
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   )
