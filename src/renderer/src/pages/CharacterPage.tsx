@@ -25,6 +25,8 @@ import { EntityLink } from '../components/EntityInfo'
 import { api } from '../lib/api'
 import { exportCharacter } from '../lib/exportCharacter'
 import { syncGrantedSpells } from '../lib/sync'
+import { rechargeItems } from '../lib/items'
+import { useRolls } from '../store/rolls'
 import type { Character } from '../types'
 import type { Derived } from '../engine/compute'
 
@@ -364,10 +366,14 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
           <button
             className="btn btn-primary"
             onClick={() => {
+              let charges: { name: string; regained: number }[] = []
               update((c) => {
                 applyRest(c, kind, d, spent)
                 if (kind === 'short') c.hp.current = Math.min(d.hpMax.value, c.hp.current + healed)
+                // Charges på magiske gjenstander («regains 1d6 + 1 expended charges daily at dawn»)
+                else charges = rechargeItems(c, ctx.lookup, (dice, label) => useRolls.getState().roll(dice, label, { character: char.name }).total)
               })
+              for (const x of charges) notify(t('items.chargesRegained', { name: x.name, n: x.regained }), 'good')
               notify(kind === 'short' ? t('rest.shortDone') : t('rest.longDone'), 'good')
               onClose()
             }}

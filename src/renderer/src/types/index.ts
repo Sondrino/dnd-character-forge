@@ -440,6 +440,8 @@ export interface InventoryItem {
   baseId?: string
   /** Manuell magisk bonus (+1/+2/+3) */
   bonus?: number
+  /** Brukte charges (magiske gjenstander med charges) */
+  chargesUsed?: number
 }
 
 export interface CharacterFeat {
@@ -548,6 +550,8 @@ export interface CombatState {
   log: CombatLogEntry[]
   stats: { dealt: number; taken: number; healed: number; spells: number; crits: number; hits: number; misses: number }
   startedAt: string
+  /** Ammunisjon brukt i kampen per utstyrsrad (halvparten kan hentes igjen etterpå) */
+  ammoUsed?: { uid: string; refId?: string; name: string; n: number }[]
 }
 
 export interface Character {

@@ -7,6 +7,8 @@ import type { RollResult } from '../../dice'
 import { Markdown, Modal } from '../ui'
 import { EntityLink } from '../EntityInfo'
 import { RollBox } from './RollBox'
+import { AmmoStatus, ItemFlow } from './ItemFlow'
+import { consumeAmmo } from '../../lib/items'
 import { classColumn, featureStates, signed, useCombat, type CombatOption, type Economy } from './useCombat'
 import { SPELL_BUFFS, addEffect, addLog, attacksPerAction, offhandBlocked, castingKind, critDice, dropConcentration, durationRounds, evalAbility, freeCasts, initiativeOrder, resolveDice, spellDamageDice, spellHealDice, spellTempDice, type FreeCast } from '../../lib/combat'
 
@@ -42,13 +44,16 @@ export function Resolver({ opt, onClose }: { opt: CombatOption | null; onClose: 
         ? opt.spell.name
         : opt.kind === 'feature'
           ? opt.feature.name
-          : t(`combat.std.${opt.id}`)
+          : opt.kind === 'item'
+            ? opt.name
+            : t(`combat.std.${opt.id}`)
   return (
     <Modal open={!!opt} onClose={onClose} title={title} width={720}>
       {opt?.kind === 'attack' && <AttackFlow key={opt.key} opt={opt} onDone={onClose} />}
       {opt?.kind === 'spell' && <SpellFlow key={opt.key} spell={opt.spell} source={opt.source} onDone={onClose} />}
       {opt?.kind === 'feature' && <FeatureFlow key={opt.key} opt={opt} onDone={onClose} />}
       {opt?.kind === 'std' && <StdFlow key={opt.key} id={opt.id} economy={opt.economy} onDone={onClose} />}
+      {opt?.kind === 'item' && <ItemFlow key={opt.key} opt={opt} onDone={onClose} />}
     </Modal>
   )
 }
@@ -301,12 +306,13 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
           {t(twf ? 'combat.offhandTwf' : 'combat.offhandNote')} {nick && <b className="text-gold">{t('combat.nickNote')}</b>}
         </p>
       )}
+      <AmmoStatus attack={a} />
       <AttackRoll
         key={a.key}
         setup={{ name: a.name, bonus: a.bonus?.value ?? 0, damage, damageType: a.damageType, melee: !ranged, str: usesStr, mastery: a.masteryActive ? a.mastery : undefined, sneakOk: ranged || a.properties.includes('finesse') }}
         finishLabel={t('combat.finishAttack')}
         onFinish={(r) => {
-          mut((cc) => {
+          mut((cc, ch) => {
             if (opt.via === 'action') {
               cc.turn.action = true
               cc.turn.attacks += 1
@@ -315,6 +321,9 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
               cc.turn.offhandDone = true
               if (!nick) cc.turn.bonus = true
             } else spend(cc, opt.via)
+            // Ammunition-våpen bruker ett stykk ammunisjon per angrep (telles for å hente igjen halvparten etterpå)
+            const ammo = consumeAmmo(ch, L, L.get('weapon', a.refId), cc)
+            if (ammo) addLog(cc, 'info', t('items.ammoLog', { name: ammo.name, n: ammo.left }))
             const who = hurt(cc, r.target, r.damage)
             if (r.hit) {
               cc.stats.hits += 1

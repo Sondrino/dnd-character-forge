@@ -1,5 +1,6 @@
 import { combatNb } from './combat'
 import { toolsNb } from './tools'
+import { itemsNb } from './items'
 import { abilityNb } from './ability'
 import { partyNb } from './party'
 
@@ -226,5 +227,6 @@ export const nb = {
   party: partyNb,
   combat: combatNb,
   tools: toolsNb,
+  items: itemsNb,
   ability: abilityNb
 }
