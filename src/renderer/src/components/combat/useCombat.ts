@@ -3,6 +3,7 @@ import type { DerivedAttack, DerivedFeature, Derived } from '../../engine/comput
 import type { Lookup } from '../../engine/lookup'
 import { useChar, type CharCtxValue } from '../sheet/context'
 import { AT_WILL_INVOCATIONS, attacksPerAction, castingKind, featureGrantedSpells } from '../../lib/combat'
+import { itemCombatOptions, type ItemOptionData } from '../../lib/items'
 
 export interface CombatCtx extends CharCtxValue {
   c: CombatState
@@ -47,6 +48,7 @@ export type CombatOption =
   | { kind: 'spell'; key: string; spell: SpellDef; source: string }
   | { kind: 'feature'; key: string; feature: DerivedFeature }
   | { kind: 'std'; key: string; id: string; economy: Economy }
+  | ItemOptionData
 
 export interface OptionGroups {
   action: CombatOption[]
@@ -100,11 +102,13 @@ export function combatOptions(char: Character, d: Derived, L: Lookup): OptionGro
     if (a === 'action' || a === 'bonus' || a === 'reaction') g[a].push(opt)
     else if (f.uses || f.roll || f.toggle) g.other.push(opt)
   }
+  // Forbruksvarer: potions (Bonus Action i 2024) og scrolls
+  for (const o of itemCombatOptions(char, L)) g[o.economy].push(o)
   // Standardhandlinger + Opportunity Attack
   for (const s of STD_ACTIONS) g.action.push({ kind: 'std', key: `std:${s.id}`, id: s.id, economy: s.economy })
   g.reaction.unshift({ kind: 'attack', key: 'opportunity', via: 'reaction' })
   const order = (o: CombatOption): number => (o.kind === 'attack' ? 0 : o.kind === 'feature' ? 1 : o.kind === 'spell' ? 2 + o.spell.level / 10 : 3)
-  const nameOf = (o: CombatOption): string => (o.kind === 'attack' ? (o.attack?.kind === 'unarmed' ? '~' : (o.attack?.name ?? '')) : o.kind === 'spell' ? o.spell.name : o.kind === 'feature' ? o.feature.name : '')
+  const nameOf = (o: CombatOption): string => (o.kind === 'attack' ? (o.attack?.kind === 'unarmed' ? '~' : (o.attack?.name ?? '')) : o.kind === 'spell' ? o.spell.name : o.kind === 'feature' ? o.feature.name : o.kind === 'item' ? o.name : '')
   // Angrep (Unarmed sist), features og spells (etter level) alfabetisk; standardhandlinger i fast rekkefølge
   for (const k of ['action', 'bonus', 'reaction', 'other'] as const) g[k].sort((a, b) => order(a) - order(b) || (a.kind === 'std' || b.kind === 'std' ? 0 : nameOf(a).localeCompare(nameOf(b))))
   return g

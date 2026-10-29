@@ -2,7 +2,7 @@ import type React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, Package, Swords, Shield, Gem, Coins, Weight, Sparkles } from 'lucide-react'
+import { Plus, Trash2, Package, Swords, Shield, Gem, Coins, Weight, Sparkles, ShoppingCart } from 'lucide-react'
 import type { AnyEntity, GearDef, MagicItemDef } from '../../types'
 import { useChar } from './context'
 import { Empty, NumberInput, Section, Tip, Toggle } from '../ui'
@@ -12,6 +12,9 @@ import { uid } from '../../store/characters'
 import { SortSelect, useSortChoice } from '../SortSelect'
 import { costGp } from '../../lib/sorting'
 import { ChoiceResolver } from './ChoiceResolver'
+import { BuyModal, CoinInput, ItemRowActions } from './ItemTools'
+import { LootModal } from './LootModal'
+import { addEntity, qtyDivisor } from '../../lib/items'
 
 const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const
 const COIN_COLORS: Record<string, string> = { cp: '#b87333', sp: '#c0c0c0', ep: '#9fb4c7', gp: '#d6a84c', pp: '#e5e4e2' }
@@ -21,6 +24,9 @@ export function InventoryTab() {
   const { char, derived: d, lookup: L, update } = useChar()
   const [picker, setPicker] = useState(false)
   const [customName, setCustomName] = useState('')
+  const [buyMode, setBuyMode] = useState(false)
+  const [buying, setBuying] = useState<AnyEntity[] | null>(null)
+  const [loot, setLoot] = useState(false)
   const wmPending = d.pending.find((p) => p.key === 'weaponMastery')
 
   const items = char.inventory.map((it, idx) => {
@@ -40,9 +46,9 @@ export function InventoryTab() {
   const nameOf = (x: (typeof items)[number]): string => x.it.name || x.magic?.name || x.def?.name || ''
   const valueOf = (x: (typeof items)[number]): number => {
     const c = costGp((x.def as { cost?: string } | undefined)?.cost)
-    return Number.isFinite(c) ? c * x.it.qty : 0
+    return Number.isFinite(c) ? (c * x.it.qty) / qtyDivisor(x.def, x.it) : 0
   }
-  const weightOf = (x: (typeof items)[number]): number => ((x.def as { weight?: number } | undefined)?.weight ?? 0) * x.it.qty
+  const weightOf = (x: (typeof items)[number]): number => (((x.def as { weight?: number } | undefined)?.weight ?? 0) * x.it.qty) / qtyDivisor(x.def, x.it)
   const sortItems = (list: typeof items): typeof items =>
     sortId === 'manual'
       ? list
@@ -63,6 +69,16 @@ export function InventoryTab() {
           <button className="btn btn-primary" onClick={() => setPicker(true)}>
             <Plus size={15} /> {t('inv.add')}
           </button>
+          <Tip content={t('items.buyModeTip')}>
+            <span>
+              <Toggle checked={buyMode} onChange={setBuyMode} label={<span className="flex items-center gap-1 text-xs"><ShoppingCart size={12} /> {t('items.buyMode')}</span>} />
+            </span>
+          </Tip>
+          <Tip content={t('items.lootTip')}>
+            <button className="btn" onClick={() => setLoot(true)}>
+              <Gem size={14} /> {t('items.loot')}
+            </button>
+          </Tip>
           <form
             className="flex gap-2"
             onSubmit={(e) => {
@@ -118,9 +134,10 @@ export function InventoryTab() {
                             {magic && <span className="chip py-0 text-[9px] capitalize text-arcane">{magic.rarity}</span>}
                             {(it.bonus ?? 0) !== 0 && <span className="chip py-0 text-[9px]">+{it.bonus}</span>}
                           </div>
+                          {it.notes && <div className="whitespace-pre-wrap text-[11px] italic text-muted">{it.notes}</div>}
                           <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
                             {magic && base && <span>{base.name}</span>}
-                            {w ? <span>{w * it.qty} lb.</span> : null}
+                            {w ? <span>{Math.round(((w * it.qty) / qtyDivisor(def, it)) * 100) / 100} lb.</span> : null}
                             {(base as GearDef | undefined)?.cost && <span>{(base as GearDef).cost}</span>}
                             {needsBase && <BasePicker magic={magic!} onPick={(id) => update((c) => void (c.inventory[idx].baseId = id))} />}
                           </div>
@@ -153,6 +170,7 @@ export function InventoryTab() {
                             </select>
                           </Tip>
                         )}
+                        <ItemRowActions it={it} idx={idx} def={def} />
                         <button className="btn btn-ghost btn-sm text-faint hover:text-bad" onClick={() => update((c) => void c.inventory.splice(idx, 1))}>
                           <Trash2 size={13} />
                         </button>
@@ -174,13 +192,14 @@ export function InventoryTab() {
                 <motion.div whileHover={{ rotateY: 180 }} transition={{ duration: 0.5 }} className="mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-bold text-black shadow" style={{ background: `radial-gradient(circle at 35% 35%, #fff8, ${COIN_COLORS[c]})` }}>
                   {c.toUpperCase()}
                 </motion.div>
-                <NumberInput value={char.currency[c]} min={0} width={58} className="px-1 py-0.5 text-xs" onChange={(v) => update((d) => void (d.currency[c] = v))} />
+                <CoinInput coin={c} />
               </div>
             ))}
           </div>
           <div className="mt-2 text-right text-xs text-muted">
             ≈ {(char.currency.cp / 100 + char.currency.sp / 10 + char.currency.ep / 2 + char.currency.gp + char.currency.pp * 10).toFixed(2)} GP
           </div>
+          <div className="mt-1 text-[10px] text-faint">{t('items.coinHint')}</div>
         </Section>
         <Section title={<span className="flex items-center gap-1.5"><Weight size={13} /> {t('inv.carry')}</span>}>
           <div className="mb-1 flex justify-between text-sm">
@@ -209,20 +228,23 @@ export function InventoryTab() {
         extra={char.customEntities}
         groupBy={(e) => ({ weapon: 'Weapons', armor: 'Armor', gear: 'Gear', tool: 'Tools', magicItem: 'Magic Items' })[e.kind as 'weapon'] ?? e.kind}
         onConfirm={(ids, ents) =>
-          update((c) => {
-            ents.forEach((e) => addItem(c, e))
-            void ids
-          })
+          buyMode
+            ? setBuying(ents)
+            : update((c) => {
+                ents.forEach((e) => addItem(c, e))
+                void ids
+              })
         }
       />
+      <BuyModal ents={buying} onClose={() => setBuying(null)} />
+      <LootModal open={loot} onClose={() => setLoot(false)} />
     </div>
   )
 }
 
+/** Ammunisjon legges til i bunter (20 Arrows), annet utstyr stables */
 function addItem(c: import('../../types').Character, e: AnyEntity): void {
-  const ex = e.kind === 'gear' ? c.inventory.find((i) => i.refId === e.id) : undefined
-  if (ex) ex.qty += 1
-  else c.inventory.push({ uid: uid(), refId: e.id, qty: 1, equipped: false, attuned: false })
+  addEntity(c, e, 1, uid)
 }
 
 /** Utstyr: bare én body armor og ett skjold om gangen */

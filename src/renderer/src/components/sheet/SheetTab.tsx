@@ -13,6 +13,7 @@ import { useRolls } from '../../store/rolls'
 import { d20 } from '../../dice'
 import { EntityLink } from '../EntityInfo'
 import { applyDamage, deathSave } from '../../lib/combat'
+import { useAmmo } from './AmmoBadge'
 import type { DerivedAttack, DerivedFeature } from '../../engine/compute'
 
 export function SheetTab() {
@@ -397,6 +398,7 @@ function AttacksSection() {
 function AttackRow({ a }: { a: DerivedAttack }) {
   const { char, update } = useChar()
   const roll = useRolls((s) => s.roll)
+  const ammo = useAmmo(a)
   const [critNext, setCritNext] = useState(false)
   const dmgNotation = a.damage.replace(/\s/g, '')
   const rollableDamage = /\d*d\d+/.test(dmgNotation)
@@ -409,6 +411,7 @@ function AttackRow({ a }: { a: DerivedAttack }) {
             <EntityLink kind="rule" id={`mastery-${a.mastery}`}>{a.mastery}</EntityLink>
           </span>
         )}
+        {ammo.badge}
       </td>
       <td className="py-1.5 pr-5">
         {a.bonus ? (
@@ -418,6 +421,7 @@ function AttackRow({ a }: { a: DerivedAttack }) {
             update={a.kind === 'spell' ? () => {} : update}
             rollLabel={`${a.name} attack`}
             characterName={char.name}
+            onRoll={ammo.onRoll}
           />
         ) : a.save ? (
           <span className="text-xs">

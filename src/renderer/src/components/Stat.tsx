@@ -165,7 +165,7 @@ export function StatEditor({
  *  – rulles (klikk), – justeres eller overstyres (blyant), – tilbakestilles.
  */
 export function StatValue({
-  stat, okey, update, signed = true, rollLabel, className, rollable = true, characterName
+  stat, okey, update, signed = true, rollLabel, className, rollable = true, characterName, onRoll
 }: {
   stat: Stat
   okey: string
@@ -175,6 +175,8 @@ export function StatValue({
   className?: string
   rollable?: boolean
   characterName?: string
+  /** Kalles etter et kast (f.eks. for å bruke ammunisjon) */
+  onRoll?: () => void
 }) {
   const { t } = useTranslation()
   const [anchor, setAnchor] = useState<DOMRect | null>(null)
@@ -190,8 +192,10 @@ export function StatValue({
         <button
           className={`rounded-md px-1 transition-colors ${rollable ? 'cursor-pointer hover:bg-gold/15 hover:text-gold-2' : 'cursor-default'} ${stat.overridden ? 'text-gold-2 underline decoration-dotted' : adjusted ? 'text-arcane' : ''}`}
           onClick={() => {
-            if (rollable) roll(d20(stat.value), rollLabel ?? okey, { mode: useRolls.getState().mode !== 'normal' ? undefined : mode, character: characterName })
-            else setAnchor(ref.current!.getBoundingClientRect())
+            if (rollable) {
+              roll(d20(stat.value), rollLabel ?? okey, { mode: useRolls.getState().mode !== 'normal' ? undefined : mode, character: characterName })
+              onRoll?.()
+            } else setAnchor(ref.current!.getBoundingClientRect())
           }}
         >
           <AnimatedNumber value={stat.value} signed={signed} />

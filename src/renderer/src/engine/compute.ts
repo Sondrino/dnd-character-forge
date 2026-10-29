@@ -7,6 +7,7 @@ import { skills as SKILLS, skillById } from '../data/skills'
 import type { Lookup } from './lookup'
 import { abilityMod, averageHitDie, MULTICLASS_PROFS, PACT_SLOTS, proficiencyBonus, signed, SPELL_SLOTS, SUBCLASS_SPELLCASTING } from './tables'
 import { evalFormula, type FormulaContext } from './formula'
+import { qtyDivisor } from '../lib/items'
 
 /* ------------------------------------------------------------------ */
 /* Typer for beregnet ark                                              */
@@ -1116,7 +1117,8 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
   let weight = 0
   for (const r of resolved) {
     const w = (r.base as { weight?: number } | undefined)?.weight ?? (r.def as { weight?: number } | undefined)?.weight ?? 0
-    weight += (w || 0) * (r.item.qty || 1)
+    // Ammunisjon telles i stykk, men vekten i dataene gjelder hele bunten (20 Arrows = 1 lb.)
+    weight += ((w || 0) * (r.item.qty || 1)) / qtyDivisor(r.def, r.item)
   }
   const coins = Object.values(char.currency ?? {}).reduce((s, n) => s + (n || 0), 0)
   weight += coins / 50

@@ -1,5 +1,6 @@
 import type { nb } from './nb'
 import { combatEn } from './combat'
+import { itemsEn } from './items'
 import { abilityEn } from './ability'
 
 export const en: typeof nb = {
@@ -219,5 +220,6 @@ export const en: typeof nb = {
     auto: 'Auto', adjustment: 'Adjustment', fixed: 'Fixed', result: 'Result'
   },
   combat: combatEn,
+  items: itemsEn,
   ability: abilityEn
 }

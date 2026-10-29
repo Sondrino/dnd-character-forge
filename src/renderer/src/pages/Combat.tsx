@@ -13,6 +13,7 @@ import { RollBox } from '../components/combat/RollBox'
 import { Resolver } from '../components/combat/Resolver'
 import { InitiativePanel, LogPanel, StatsPanel, StatusPanel, VitalsPanel } from '../components/combat/Panels'
 import { combatOptions, signed, useCombat, type CombatOption } from '../components/combat/useCombat'
+import { AmmoRecovery, itemCardInfo } from '../components/combat/ItemFlow'
 import { addLog, advanceTurn, castingKind, endEffects, freeCasts, initiativeOrder, movementLeft, newCombat, offhandBlocked, startOwnTurn } from '../lib/combat'
 
 export default function CombatPage() {
@@ -423,7 +424,7 @@ function OptionCard({ o, onPick }: { o: CombatOption; onPick: (o: CombatOption) 
       disabled = left <= 0
       badge = <span className={`chip text-[10px] ${left ? 'border-gold/50 text-gold' : 'border-bad/50 text-bad'}`}>{left}/{o.feature.uses.max}</span>
     }
-  }
+  } else if (o.kind === 'item') ({ name, sub, badge } = itemCardInfo(o, t))
   return (
     <motion.button
       whileHover={{ y: -1 }}
@@ -499,6 +500,7 @@ function EndCombat({ open, onClose }: { open: boolean; onClose: () => void }) {
         ))}
       </div>
       {c.concentration && <p className="mt-3 text-sm text-muted">{t('combat.endConcNote', { name: c.concentration.name })}</p>}
+      <AmmoRecovery />
     </Modal>
   )
 }
