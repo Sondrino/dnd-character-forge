@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
 import { useSettings } from '../store/settings'
 import type { Source } from '../types'
@@ -38,7 +39,7 @@ export function Markdown({ text, compact }: { text: string; compact?: boolean })
 }
 
 export function Modal({
-  open, onClose, title, children, width = 720, footer
+  open, onClose, title, children, width = 720, footer, dismissable = true, confirmClose
 }: {
   open: boolean
   onClose: () => void
@@ -46,15 +47,31 @@ export function Modal({
   children: ReactNode
   width?: number
   footer?: ReactNode
+  /** false: klikk utenfor lukker ikke (for flerstegs-dialoger der man ellers mister fremdrift) */
+  dismissable?: boolean
+  /** Spør før lukking (X, Esc, klikk utenfor) med denne teksten. Knapper i footer kaller onClose direkte. */
+  confirmClose?: string | false
 }) {
+  const { t } = useTranslation()
+  const [asking, setAsking] = useState(false)
+  useEffect(() => {
+    if (!open) setAsking(false)
+  }, [open])
+  const requestClose = (): void => {
+    if (confirmClose) setAsking(true)
+    else onClose()
+  }
   useEffect(() => {
     if (!open) return
     const h = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      if (asking) setAsking(false)
+      else if (confirmClose) setAsking(true)
+      else onClose()
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [open, onClose])
+  }, [open, onClose, confirmClose, asking])
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -64,10 +81,12 @@ export function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={dismissable ? requestClose : undefined} />
           <motion.div
             className="panel relative flex max-h-[90vh] w-full flex-col overflow-hidden"
             style={{ maxWidth: width }}
+            role="dialog"
+            aria-modal="true"
             initial={{ y: 30, scale: 0.96, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 20, scale: 0.97, opacity: 0 }}
@@ -76,18 +95,106 @@ export function Modal({
             {title !== undefined && (
               <div className="flex items-center justify-between border-b border-line-soft px-5 py-3">
                 <div className="font-display text-lg text-gold">{title}</div>
-                <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Lukk">
+                <button className="btn btn-ghost btn-sm" onClick={requestClose} aria-label={t('polish.modal.close')} title={t('polish.modal.close')}>
                   <X size={16} />
                 </button>
               </div>
             )}
             <div className="flex-1 overflow-y-auto p-5">{children}</div>
             {footer && <div className="flex justify-end gap-2 border-t border-line-soft px-5 py-3">{footer}</div>}
+            {asking && confirmClose && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/55 p-6" role="alertdialog">
+                <div className="panel max-w-sm p-4 text-sm">
+                  <p className="mb-3">{confirmClose}</p>
+                  <div className="flex justify-end gap-2">
+                    <button className="btn btn-sm" autoFocus onClick={() => setAsking(false)}>
+                      {t('polish.modal.stay')}
+                    </button>
+                    <button
+                      className="btn btn-sm border-bad/60 text-bad"
+                      onClick={() => {
+                        setAsking(false)
+                        onClose()
+                      }}
+                    >
+                      {t('polish.modal.closeAnyway')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>,
     document.body
+  )
+}
+
+/** Liten «⋯»-meny. Lukkes ved klikk utenfor, Esc eller valg. */
+export function MenuButton({
+  label, icon, items, className
+}: {
+  label: string
+  icon: ReactNode
+  items: { label: ReactNode; icon?: ReactNode; onClick: () => void; disabled?: boolean; title?: string }[]
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        ref.current?.querySelector<HTMLButtonElement>('button')?.focus()
+      }
+    }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  return (
+    <div ref={ref} className="relative">
+      <button className={`btn ${className ?? ''}`} aria-haspopup="menu" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen(!open)}>
+        {icon}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="panel absolute right-0 top-full z-50 mt-1 min-w-[200px] p-1 shadow-xl"
+          >
+            {items.map((it, i) => (
+              <button
+                key={i}
+                role="menuitem"
+                disabled={it.disabled}
+                title={it.title}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm hover:bg-panel-3 disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={() => {
+                  setOpen(false)
+                  it.onClick()
+                }}
+              >
+                {it.icon}
+                {it.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 

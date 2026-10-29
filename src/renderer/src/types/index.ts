@@ -644,6 +644,8 @@ export interface Character {
   customEffects: (Effect & { uid: string; label: string; active: boolean })[]
 
   settings: { hpMethod: 'fixed' | 'roll' }
+  /** Pensjonert karakter – skjules på forsiden med mindre «Vis arkiverte» er på */
+  archived?: boolean
   /** Pågående kamp (kampmodus) */
   combat?: CombatState
   /** Druid Wild Shape: kjente beast-former (creature-ids) og ev. aktiv form */

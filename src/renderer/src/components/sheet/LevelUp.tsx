@@ -74,7 +74,7 @@ export function LevelUpModal({ open, onClose }: { open: boolean; onClose: () => 
   const pending = d.pending.filter((p) => ['class', 'feats', 'skills'].includes(p.area))
 
   return (
-    <Modal open={open} onClose={onClose} width={760} title={<span className="flex items-center gap-2"><ArrowUp size={18} /> {t('level.title')}</span>}>
+    <Modal open={open} onClose={onClose} width={760} dismissable={step === 'done'} confirmClose={step === 'hp' && t('polish.modal.levelUpConfirm')} title={<span className="flex items-center gap-2"><ArrowUp size={18} /> {t('level.title')}</span>}>
       <AnimatePresence mode="wait">
         {step === 'class' && (
           <motion.div key="class" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}>

@@ -125,6 +125,7 @@ export function EntityEditor({
       open={open}
       onClose={onClose}
       width={820}
+      dismissable={false}
       title={isNew ? t('hb.new') : t('hb.edit', { name: initial?.name })}
       footer={
         <>

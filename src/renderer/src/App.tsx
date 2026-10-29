@@ -178,9 +178,21 @@ function Toast() {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10 }}
-            className={`panel px-4 py-2 text-sm ${toast.tone === 'good' ? 'border-good/50' : toast.tone === 'bad' ? 'border-bad/50' : ''}`}
+            className={`panel flex items-center gap-3 px-4 py-2 text-sm ${toast.action ? 'pointer-events-auto' : ''} ${toast.tone === 'good' ? 'border-good/50' : toast.tone === 'bad' ? 'border-bad/50' : ''}`}
+            role="status"
           >
             {toast.text}
+            {toast.action && (
+              <button
+                className="btn btn-sm border-gold/60 text-gold"
+                onClick={() => {
+                  toast.action!.run()
+                  useUi.getState().dismissToast()
+                }}
+              >
+                {toast.action.label}
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

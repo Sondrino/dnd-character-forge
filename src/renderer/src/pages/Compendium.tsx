@@ -8,6 +8,7 @@ import { useLookup, useUi } from '../store/ui'
 import { InfoPopover, entityFacts, openDndBeyond } from '../components/EntityInfo'
 import { SourceBadge } from '../components/ui'
 import { matchesQuery } from '../lib/search'
+import i18n from '../i18n'
 import { groupEntities } from '../lib/compendiumGroups'
 import { sortEntities, sortOptions } from '../lib/sorting'
 import { SortSelect, useSortChoice } from '../components/SortSelect'
@@ -238,7 +239,7 @@ function filterDefs(kind: EntityKind, all: AnyEntity[], L: ReturnType<typeof use
   switch (kind) {
     case 'spell':
       return [
-        { label: 'Level', options: Array.from({ length: 10 }, (_, i) => ({ v: String(i), l: i === 0 ? 'Cantrip' : `Level ${i}` })), test: (e, v) => (e as SpellDef).level === Number(v) },
+        { label: i18n.t('common.level'), options: Array.from({ length: 10 }, (_, i) => ({ v: String(i), l: i === 0 ? i18n.t('polish.labels.cantrip') : i18n.t('polish.labels.spellLevel', { n: i }) })), test: (e, v) => (e as SpellDef).level === Number(v) },
         { label: 'Class', options: L.all('class').filter((c) => c.spellcasting).map((c) => ({ v: c.id, l: c.name })), test: (e, v) => (e as SpellDef).classes.includes(v) }
       ]
     case 'magicItem':

@@ -11,6 +11,7 @@ import { ChoicesPanel } from './ChoicesPanel'
 import type { DerivedFeature } from '../../engine/compute'
 import type { Uses } from '../../types'
 import { openDndBeyond } from '../EntityInfo'
+import { removeWithUndo } from '../../store/ui'
 
 export function FeaturesTab() {
   const { t } = useTranslation()
@@ -52,10 +53,10 @@ export function FeaturesTab() {
                   <Star size={12} className="text-gold" />
                   <span>{def?.name ?? cf.featId}</span>
                   <span className="text-[11px] text-faint">{cf.source.replace(/^class:(\w+):(\d+)$/, '$1 $2').split('#')[0]}</span>
-                  <button className="btn btn-ghost btn-sm ml-auto text-faint hover:text-bad" onClick={() => update((c) => {
+                  <button className="btn btn-ghost btn-sm ml-auto text-faint hover:text-bad" title={t('common.delete')} aria-label={t('common.delete')} onClick={() => removeWithUndo(char.id, (c) => {
                     c.feats = c.feats.filter((x) => x.uid !== cf.uid)
                     c.spells = c.spells.filter((s) => s.source !== `feat:${cf.uid}`)
-                  })}>
+                  }, t('polish.deleted', { name: def?.name ?? cf.featId }))}>
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -82,7 +83,8 @@ export function FeaturesTab() {
 
 function FeatureCard({ f }: { f: DerivedFeature }) {
   const [open, setOpen] = useState(false)
-  const { update } = useChar()
+  const { t } = useTranslation()
+  const { char } = useChar()
   return (
     <div className="overflow-hidden rounded-xl border border-line-soft bg-panel-2/40">
       <div className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-panel-2" onClick={() => setOpen(!open)}>
@@ -92,7 +94,7 @@ function FeatureCard({ f }: { f: DerivedFeature }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-display text-[15px] text-gold">{f.name}</span>
-            {f.level !== undefined && <span className="chip py-0 text-[10px]">Lvl {f.level}</span>}
+            {f.level !== undefined && <span className="chip py-0 text-[10px]">{t('polish.labels.lvl', { n: f.level })}</span>}
             {f.activation && f.activation !== 'passive' && <span className="chip py-0 text-[9px] uppercase">{f.activation}</span>}
           </div>
           {!open && <div className="truncate text-xs text-muted">{f.summary}</div>}
@@ -112,7 +114,7 @@ function FeatureCard({ f }: { f: DerivedFeature }) {
                   <ExternalLink size={12} /> D&D Beyond
                 </button>
                 {f.sourceType === 'custom' && (
-                  <button className="btn btn-ghost btn-sm btn-danger" onClick={() => update((c) => void (c.customFeatures = c.customFeatures.filter((x) => x.id !== f.id)))}>
+                  <button className="btn btn-ghost btn-sm btn-danger" title={t('common.delete')} aria-label={t('common.delete')} onClick={() => removeWithUndo(char.id, (c) => void (c.customFeatures = c.customFeatures.filter((x) => x.id !== f.id)), t('polish.deleted', { name: f.name }))}>
                     <Trash2 size={12} />
                   </button>
                 )}

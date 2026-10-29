@@ -113,7 +113,7 @@ export function EntityPicker({
             </button>
             {levels.map((l) => (
               <button key={l} className={`btn btn-sm ${level === l ? 'btn-primary' : ''}`} onClick={() => setLevel(l)}>
-                {l === 0 ? 'Cantrips' : `Level ${l}`}
+                {l === 0 ? t('spells.cantrips') : t('polish.labels.spellLevel', { n: l })}
               </button>
             ))}
           </div>

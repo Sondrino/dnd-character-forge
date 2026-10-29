@@ -2,13 +2,14 @@ import type React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, Package, Swords, Shield, Gem, Coins, Weight, Sparkles, ShoppingCart } from 'lucide-react'
+import { AlertTriangle, Plus, Trash2, Package, Swords, Shield, Gem, Coins, Weight, Sparkles, ShoppingCart } from 'lucide-react'
 import type { AnyEntity, GearDef, MagicItemDef } from '../../types'
 import { useChar } from './context'
 import { Empty, NumberInput, Section, Tip, Toggle } from '../ui'
 import { EntityLink } from '../EntityInfo'
 import { EntityPicker } from '../EntityPicker'
 import { uid } from '../../store/characters'
+import { removeWithUndo } from '../../store/ui'
 import { SortSelect, useSortChoice } from '../SortSelect'
 import { costGp } from '../../lib/sorting'
 import { ChoiceResolver } from './ChoiceResolver'
@@ -16,6 +17,7 @@ import { BuyModal, CoinInput, ItemRowActions } from './ItemTools'
 import { LootModal } from './LootModal'
 import { addEntity, qtyDivisor } from '../../lib/items'
 
+const MAX_ATTUNED = 3
 const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const
 const COIN_COLORS: Record<string, string> = { cp: '#b87333', sp: '#c0c0c0', ep: '#9fb4c7', gp: '#d6a84c', pp: '#e5e4e2' }
 
@@ -28,6 +30,7 @@ export function InventoryTab() {
   const [buying, setBuying] = useState<AnyEntity[] | null>(null)
   const [loot, setLoot] = useState(false)
   const wmPending = d.pending.find((p) => p.key === 'weaponMastery')
+  const overAttuned = d.attunedCount > MAX_ATTUNED
 
   const items = char.inventory.map((it, idx) => {
     const def = L.item(it.refId)
@@ -117,7 +120,17 @@ export function InventoryTab() {
           const list = sortItems(items.filter(g.filter))
           if (!list.length) return null
           return (
-            <Section key={g.id} title={<span className="flex items-center gap-1.5">{g.icon} {g.label}</span>}>
+            <Section
+              key={g.id}
+              title={<span className="flex items-center gap-1.5">{g.icon} {g.label}</span>}
+              actions={
+                list.some((x) => x.magic?.attunement) ? (
+                  <span className={`chip ${overAttuned ? 'border-bad text-bad' : 'text-arcane'}`} title={overAttuned ? t('polish.inv.tooMany', { n: d.attunedCount }) : undefined}>
+                    {overAttuned ? <AlertTriangle size={11} /> : <Sparkles size={11} />} {t('inv.attunement', { n: d.attunedCount })}
+                  </span>
+                ) : undefined
+              }
+            >
               <div className="divide-y divide-line-soft">
                 <AnimatePresence initial={false}>
                   {list.map(({ it, idx, def, magic, base }) => {
@@ -145,9 +158,9 @@ export function InventoryTab() {
                         <NumberInput value={it.qty} min={0} width={54} className="py-0.5" onChange={(v) => update((c) => void (c.inventory[idx].qty = v))} />
                         {equipable && <Toggle checked={it.equipped} onChange={(v) => update((c) => equip(c, idx, v, L))} label={<span className="text-xs">{t('inv.equipped')}</span>} />}
                         {needsAttune && (
-                          <Tip content={typeof magic!.attunement === 'string' ? `Attunement ${magic!.attunement}` : 'Attunement'}>
+                          <Tip content={<>{typeof magic!.attunement === 'string' ? `Attunement ${magic!.attunement}` : 'Attunement'}{it.attuned && overAttuned && <div className="mt-1 text-bad">{t('polish.inv.tooMany', { n: d.attunedCount })}</div>}</>}>
                             <button
-                              className={`chip cursor-pointer ${it.attuned ? 'border-arcane bg-arcane/20 text-arcane' : ''}`}
+                              className={`chip cursor-pointer ${it.attuned ? (overAttuned ? 'border-bad bg-bad/20 text-bad' : 'border-arcane bg-arcane/20 text-arcane') : ''}`}
                               onClick={() => update((c) => void (c.inventory[idx].attuned = !c.inventory[idx].attuned))}
                             >
                               <Sparkles size={11} /> {t('inv.attuned')}
@@ -171,7 +184,12 @@ export function InventoryTab() {
                           </Tip>
                         )}
                         <ItemRowActions it={it} idx={idx} def={def} />
-                        <button className="btn btn-ghost btn-sm text-faint hover:text-bad" onClick={() => update((c) => void c.inventory.splice(idx, 1))}>
+                        <button
+                          className="btn btn-ghost btn-sm text-faint hover:text-bad"
+                          title={t('common.delete')}
+                          aria-label={t('common.delete')}
+                          onClick={() => removeWithUndo(char.id, (c) => void (c.inventory = c.inventory.filter((x) => x.uid !== it.uid)), t('polish.deleted', { name: nameOf({ it, idx, def, magic, base }) || '?' }))}
+                        >
                           <Trash2 size={13} />
                         </button>
                       </motion.div>
@@ -210,7 +228,10 @@ export function InventoryTab() {
             <motion.div className="h-full rounded-full" style={{ background: carryPct >= 1 ? 'var(--bad)' : carryPct > 0.75 ? 'var(--gold)' : 'var(--good)' }} animate={{ width: `${carryPct * 100}%` }} />
           </div>
           <div className="mt-1 text-[11px] text-muted">{t('inv.carryHint', { n: d.carry.dragLift })}</div>
-          <div className="mt-2 text-[11px] text-muted">{t('inv.attunement', { n: d.attunedCount })}</div>
+          <div className={`mt-2 flex items-center gap-1 text-[11px] ${overAttuned ? 'font-semibold text-bad' : 'text-muted'}`}>
+            {overAttuned && <AlertTriangle size={12} />} {t('inv.attunement', { n: d.attunedCount })}
+          </div>
+          {overAttuned && <div className="mt-1 text-[11px] text-bad">{t('polish.inv.tooMany', { n: d.attunedCount })}</div>}
         </Section>
         {d.weaponMasteryMax > 0 && (
           <Section title={`Weapon Mastery (${char.weaponMasteries.length}/${d.weaponMasteryMax})`}>

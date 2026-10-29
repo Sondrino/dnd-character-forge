@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, Sparkles, BookOpen, Wand2, Moon } from 'lucide-react'
+import { Plus, Trash2, Sparkles, BookOpen, Wand2, Moon, Search, X } from 'lucide-react'
 import type { SpellDef } from '../../types'
 import { useChar } from './context'
 import { Empty, Section, Tip } from '../ui'
@@ -9,7 +9,8 @@ import { EntityLink } from '../EntityInfo'
 import { EntityPicker } from '../EntityPicker'
 import { StatValue } from '../Stat'
 import { useRolls } from '../../store/rolls'
-import { useUi } from '../../store/ui'
+import { removeWithUndo, useUi } from '../../store/ui'
+import { EMPTY_SPELL_FILTER, isSpellFilterActive, matchOwnSpell, type OwnSpellFilter } from '../../lib/polish'
 import { abilityNames } from '../../data/skills'
 import { spellFilter } from '../../lib/spellFilter'
 import { freeCasts } from '../../lib/combat'
@@ -26,8 +27,16 @@ export function SpellsTab() {
     .map((s, idx) => ({ s, idx, def: L.get('spell', s.spellId) as SpellDef | undefined }))
     .filter((x) => x.def)
     .sort((a, b) => a.def!.level - b.def!.level || a.def!.name.localeCompare(b.def!.name))
+  const [filter, setFilter] = useState<OwnSpellFilter>(EMPTY_SPELL_FILTER)
+  const filtering = isSpellFilterActive(filter)
+  const shown = filtering ? spells.filter((x) => matchOwnSpell(x.s, x.def!, filter)) : spells
   const byLevel = new Map<number, typeof spells>()
-  for (const x of spells) byLevel.set(x.def!.level, [...(byLevel.get(x.def!.level) ?? []), x])
+  for (const x of shown) byLevel.set(x.def!.level, [...(byLevel.get(x.def!.level) ?? []), x])
+  const toggleChip = (key: 'preparedOnly' | 'ritual' | 'concentration', label: string) => (
+    <button key={key} className={`chip cursor-pointer ${filter[key] ? 'border-gold bg-gold/15 text-gold' : ''}`} aria-pressed={filter[key]} onClick={() => setFilter({ ...filter, [key]: !filter[key] })}>
+      {label}
+    </button>
+  )
 
   const useSlot = (level: number): boolean => {
     const pactOk = d.pact && d.pact.level >= level && d.pact.used < d.pact.count
@@ -50,7 +59,7 @@ export function SpellsTab() {
     <div className="grid grid-cols-12 gap-4">
       <div className="col-span-12 space-y-4 lg:col-span-4">
         {d.spellcasting.map((sc) => (
-          <Section key={sc.classId} title={`${sc.className} Spellcasting`}>
+          <Section key={sc.classId} title={t('polish.labels.classSpellcasting', { cls: sc.className })}>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-xl border border-line-soft bg-panel-2 p-2">
                 <div className="text-[10px] uppercase tracking-widest text-muted">{t('spells.ability')}</div>
@@ -93,7 +102,7 @@ export function SpellsTab() {
           <div className="space-y-2">
             {d.slots.map((s) => (
               <div key={s.level} className="flex items-center gap-3">
-                <span className="w-14 text-xs text-muted">Level {s.level}</span>
+                <span className="w-14 text-xs text-muted">{t('polish.labels.spellLevel', { n: s.level })}</span>
                 <div className="flex gap-1">
                   {Array.from({ length: s.max }, (_, i) => (
                     <motion.button
@@ -112,7 +121,7 @@ export function SpellsTab() {
             ))}
             {d.pact && (
               <div className="flex items-center gap-3 border-t border-line-soft pt-2">
-                <span className="w-14 text-xs text-muted">Pact (L{d.pact.level})</span>
+                <span className="w-14 text-xs text-muted">{t('polish.labels.pactShort', { n: d.pact.level })}</span>
                 <div className="flex gap-1">
                   {Array.from({ length: d.pact.count }, (_, i) => (
                     <motion.button
@@ -152,8 +161,40 @@ export function SpellsTab() {
             <Empty icon={<Sparkles size={36} />} title={t('spells.empty')} text={d.spellcasting.length ? t('spells.emptyText') : t('spells.noCaster')} />
           </div>
         )}
+        {spells.length > 0 && (
+          <div className="panel flex flex-wrap items-center gap-2 p-3">
+            <div className="relative">
+              <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
+              <input
+                className="input w-52 py-1 pl-8 text-sm"
+                placeholder={t('polish.spells.search')}
+                aria-label={t('polish.spells.search')}
+                value={filter.query}
+                onChange={(e) => setFilter({ ...filter, query: e.target.value })}
+              />
+            </div>
+            {toggleChip('preparedOnly', t('polish.spells.preparedOnly'))}
+            {toggleChip('ritual', t('polish.spells.ritual'))}
+            {toggleChip('concentration', t('polish.spells.concentration'))}
+            <select className="input w-auto py-1 text-xs" aria-label={t('polish.spells.time')} value={filter.time} onChange={(e) => setFilter({ ...filter, time: e.target.value as OwnSpellFilter['time'] })}>
+              <option value="all">{t('polish.spells.timeAll')}</option>
+              <option value="action">{t('polish.spells.timeAction')}</option>
+              <option value="bonus">{t('polish.spells.timeBonus')}</option>
+              <option value="reaction">{t('polish.spells.timeReaction')}</option>
+            </select>
+            {filtering && (
+              <>
+                <span className="ml-auto text-xs text-muted">{t('polish.spells.count', { n: shown.length, total: spells.length })}</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => setFilter(EMPTY_SPELL_FILTER)} title={t('polish.spells.clear')}>
+                  <X size={13} /> {t('polish.spells.clear')}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {filtering && spells.length > 0 && shown.length === 0 && <div className="panel p-6 text-center text-sm text-muted">{t('common.noResults')}</div>}
         {[...byLevel.entries()].map(([lvl, list]) => (
-          <Section key={lvl} title={lvl === 0 ? 'Cantrips' : `Level ${lvl}`}>
+          <Section key={lvl} title={lvl === 0 ? t('spells.cantrips') : t('polish.labels.spellLevel', { n: lvl })}>
             <div className="divide-y divide-line-soft">
               <AnimatePresence initial={false}>
                 {list.map(({ s, idx, def }) => {
@@ -211,7 +252,12 @@ export function SpellsTab() {
                           <Wand2 size={13} /> {t('spells.castBtn')}
                         </button>
                       )}
-                      <button className="btn btn-ghost btn-sm text-faint hover:text-bad" onClick={() => update((c) => void c.spells.splice(idx, 1))}>
+                      <button
+                        className="btn btn-ghost btn-sm text-faint hover:text-bad"
+                        title={t('common.delete')}
+                        aria-label={t('common.delete')}
+                        onClick={() => removeWithUndo(char.id, (c) => void (c.spells = c.spells.filter((x) => !(x.spellId === s.spellId && x.source === s.source))), t('polish.deleted', { name: sp.name }))}
+                      >
                         <Trash2 size={13} />
                       </button>
                     </motion.div>

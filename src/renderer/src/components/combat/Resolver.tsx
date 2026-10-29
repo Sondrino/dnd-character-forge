@@ -47,11 +47,14 @@ export function Resolver({ opt, onClose }: { opt: CombatOption | null; onClose: 
           : opt.kind === 'item'
             ? opt.name
             : t(`combat.std.${opt.id}`)
+  // Slot/bruk er allerede trukket i første steg – spør før dialogen lukkes uten at resultatet er logget
+  const [committed, setCommitted] = useState(false)
+  useEffect(() => setCommitted(false), [opt?.key])
   return (
-    <Modal open={!!opt} onClose={onClose} title={title} width={720}>
+    <Modal open={!!opt} onClose={onClose} title={title} width={720} dismissable={false} confirmClose={committed && t('polish.modal.resolverConfirm')}>
       {opt?.kind === 'attack' && <AttackFlow key={opt.key} opt={opt} onDone={onClose} />}
-      {opt?.kind === 'spell' && <SpellFlow key={opt.key} spell={opt.spell} source={opt.source} onDone={onClose} />}
-      {opt?.kind === 'feature' && <FeatureFlow key={opt.key} opt={opt} onDone={onClose} />}
+      {opt?.kind === 'spell' && <SpellFlow key={opt.key} spell={opt.spell} source={opt.source} onDone={onClose} onCommit={() => setCommitted(true)} />}
+      {opt?.kind === 'feature' && <FeatureFlow key={opt.key} opt={opt} onDone={onClose} onCommit={() => setCommitted(true)} />}
       {opt?.kind === 'std' && <StdFlow key={opt.key} id={opt.id} economy={opt.economy} onDone={onClose} />}
       {opt?.kind === 'item' && <ItemFlow key={opt.key} opt={opt} onDone={onClose} />}
     </Modal>
@@ -346,7 +349,7 @@ function AttackFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'attac
 /* Spells                                                              */
 /* ------------------------------------------------------------------ */
 
-function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: string; onDone: () => void }) {
+function SpellFlow({ spell: sp, source, onDone, onCommit }: { spell: SpellDef; source: string; onDone: () => void; onCommit?: () => void }) {
   const { t } = useTranslation()
   const { char, derived: d, lookup: L, c, mut, physical } = useCombat()
   const free = useMemo(() => freeCasts(char, d, L, sp), [char, d, L, sp])
@@ -392,8 +395,10 @@ function SpellFlow({ spell: sp, source, onDone }: { spell: SpellDef; source: str
       const how = o?.free ? t('combat.log.free', { name: o.free.label }) : sp.level > 0 ? t('combat.log.slot', { n: slotLevel }) : ''
       addLog(cc, 'spell', `${sp.name}${how ? ` (${how})` : ''}`)
     })
-    if (sp.attack || sp.save || sp.heal || sp.damage || sp.tempHp || sp.id === 'aid') setPhase('resolve')
-    else onDone()
+    if (sp.attack || sp.save || sp.heal || sp.damage || sp.tempHp || sp.id === 'aid') {
+      setPhase('resolve')
+      onCommit?.()
+    } else onDone()
   }
 
   const dmgDice = spellDamageDice(sp, slotLevel, d.totalLevel)
@@ -706,7 +711,7 @@ export function healSelf(_c: CombatState, ch: import('../../types').Character, n
 /* Features (Rage, Second Wind, Lay on Hands …)                        */
 /* ------------------------------------------------------------------ */
 
-function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feature' }>; onDone: () => void }) {
+function FeatureFlow({ opt, onDone, onCommit }: { opt: Extract<CombatOption, { kind: 'feature' }>; onDone: () => void; onCommit?: () => void }) {
   const { t } = useTranslation()
   const { char, derived: d, c, mut, physical } = useCombat()
   const f = opt.feature
@@ -796,8 +801,10 @@ function FeatureFlow({ opt, onDone }: { opt: Extract<CombatOption, { kind: 'feat
               cc.stats.healed += healed
               addLog(cc, 'feature', `${f.name}${pool ? ` (${spendN})` : ''}${rolled ? ` – +${healed} HP` : ''}${tempGain ? ` – ${tempGain} temp HP` : ''}`)
             })
-            if (f.roll) setPhase('roll')
-            else onDone()
+            if (f.roll) {
+              setPhase('roll')
+              onCommit?.()
+            } else onDone()
           }}
         >
           <Sparkles size={14} /> {t('combat.use')}

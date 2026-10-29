@@ -3,6 +3,7 @@ import { toolsNb } from './tools'
 import { itemsNb } from './items'
 import { abilityNb } from './ability'
 import { partyNb } from './party'
+import { polishNb } from './polish'
 
 export const nb = {
   nav: { characters: 'Karakterer', compendium: 'Oppslag', homebrew: 'Homebrew', settings: 'Innstillinger', dice: 'Terninger' },
@@ -15,10 +16,10 @@ export const nb = {
     tagline: 'Lag, utvikle og spill D&D-karakterer etter 2024-reglene – med all regeldata, terninger og tips samlet ett sted.',
     new: 'Ny karakter', newHint: 'Steg-for-steg-veiviser', import: 'Importer', export: 'Eksporter', imported: '{{n}} karakter(er) importert',
     empty: 'Ingen karakterer ennå – lag din første helt!', build: 'Veiviser', duplicate: 'Dupliser', todo: '{{n}} å gjøre',
-    deleteTitle: 'Slette karakter?', deleteText: 'Er du sikker på at du vil slette {{name}}? Dette kan ikke angres.'
+    deleteTitle: 'Slette karakter?', deleteText: 'Er du sikker på at du vil slette {{name}}? Karakteren ligger i «Nylig slettet» i 30 dager og kan gjenopprettes der.'
   },
-  tabs: { adjust: 'Egne verdier', sheet: 'Ark', spells: 'Spells', inventory: 'Utstyr', features: 'Features & valg', details: 'Detaljer', custom: 'Egne ting' },
-  char: { undone: 'Angret', redone: 'Gjort om', undoTip: 'Angre (Ctrl+Z)', redoTip: 'Gjør om (Ctrl+Y)', builderTip: 'Endre class, species, background, ability scores, utstyr og mer', adjust: 'Egne verdier', adjustTip: 'Juster eller overstyr alle verdier for custom game', levelDown: 'Gå ned et level', notFound: 'Fant ikke karakteren.', builder: 'Rediger', levelUp: 'Level up' },
+  tabs: { adjust: 'Overstyr verdier', sheet: 'Ark', spells: 'Spells', inventory: 'Utstyr', features: 'Features & valg', details: 'Detaljer', custom: 'Homebrew & evner' },
+  char: { undone: 'Angret', redone: 'Gjort om', undoTip: 'Angre (Ctrl+Z)', redoTip: 'Gjør om (Ctrl+Y)', builderTip: 'Endre class, species, background, ability scores, utstyr og mer', adjust: 'Overstyr verdier', adjustTip: 'Juster eller overstyr alle verdier for custom game', levelDown: 'Gå ned et level', notFound: 'Fant ikke karakteren.', builder: 'Rediger', levelUp: 'Level up' },
   info: { thirdPartyNote: 'Tredjepartsinnhold fra {{book}}, brukt under lisensen {{license}}. Det er ikke offisielt D&D-innhold – spør DM-en om det er tillatt i kampanjen. Se «Open Content Licenses» i Oppslag.', supplementNote: 'Offisiell tilleggsbok: {{book}}. Dette er bare et kort sammendrag med egne ord – full tekst finnes i boken eller på D&D Beyond.',
     aka: 'I Player’s Handbook: {{names}}', more: 'Mer info', openDdb: 'Åpne på D&D Beyond', phbNote: 'Dette er et kort sammendrag med egne ord. Full regeltekst finner du i {{book}} eller på D&D Beyond.',
     addInventory: 'Legg i utstyr', owned: 'Har {{n}}', addSpell: 'Legg til spell', known: 'Kjent', addFeat: 'Legg til feat', hasFeat: 'Har denne',
@@ -141,7 +142,7 @@ export const nb = {
     summaryHint: 'Vises i den lille popupen', editText: 'Rediger', preview: 'Forhåndsvis', effects: 'Effekter (oppdaterer arket automatisk)',
     effectsHint: 'F.eks. AC +1, Speed +10, advantage på Stealth, resistance mot fire …', addEffect: 'Legg til effekt', condition: 'Betingelse (valgfri)',
     noEffects: 'Ingen effekter', intro: 'Felles bibliotek for egne subclasses, species, backgrounds, feats, spells, items, monstre og mer – brukbart for alle karakterene dine og lett å dele med andre.',
-    empty: 'Biblioteket er tomt', emptyText: 'Lag homebrew her, eller lagre fra en karakters «Egne ting»-fane.', effectCount: '{{n}} effekt(er)',
+    empty: 'Biblioteket er tomt', emptyText: 'Lag homebrew her, eller lagre fra en karakters «Homebrew & evner»-fane.', effectCount: '{{n}} effekt(er)',
     imported: '{{n}} importert', importFail: 'Kunne ikke lese filen',
     featuresHint: 'Klikk en feature for å redigere: level, bruk, effekter og hva den gjør i kamp.', addFeature: 'Legg til feature', editFeature: 'Rediger feature', noFeatures: 'Ingen features ennå.',
     subclassHint: '{{cls}} velger subclass på level {{lvl}}. Features vises på arket fra levelet du setter, og kan brukes i kampmodus.',
@@ -219,7 +220,7 @@ export const nb = {
     }
   },
   adjust: {
-    title: 'Egne verdier (custom game)', intro: 'Legg til en justering (f.eks. +2 STR) oppå den automatiske utregningen – alt annet regnes fortsatt ut automatisk. «Fast verdi» erstatter utregningen helt.',
+    title: 'Overstyr verdier (custom game)', intro: 'Legg til en justering (f.eks. +2 STR) oppå den automatiske utregningen – alt annet regnes fortsatt ut automatisk. «Fast verdi» erstatter utregningen helt.',
     baseScores: 'Endre grunnverdier', resetAll: 'Nullstill alle', abilities: 'Ability scores', saves: 'Saving throws', skills: 'Skills', combat: 'Kamp & annet',
     masteryCount: 'Antall Weapon Mastery', spellcasting: 'Spellcasting', slots: 'Spell slots nivå {{n}}', attacks: 'Angrep', attackBonus: 'angrepsbonus', damageBonus: 'skadebonus',
     auto: 'Auto', adjustment: 'Justering', fixed: 'Fast', result: 'Resultat'
@@ -228,5 +229,6 @@ export const nb = {
   combat: combatNb,
   tools: toolsNb,
   items: itemsNb,
-  ability: abilityNb
+  ability: abilityNb,
+  polish: polishNb
 }

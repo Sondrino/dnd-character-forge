@@ -6,6 +6,7 @@ import type { Lookup } from '../engine/lookup'
 import { computeCharacter, type Derived } from '../engine/compute'
 import { useCharacters } from './characters'
 import { useHomebrew, useSettings } from './settings'
+import i18n from '../i18n'
 
 export interface DetailRef {
   kind: EntityKind | 'item'
@@ -19,12 +20,19 @@ interface UiState {
   history: DetailRef[]
   /** Karakteren som er åpen – gjør at detaljvisningen kan tilby «Legg til» */
   activeCharacterId: string | null
-  toast: { id: number; text: string; tone?: 'good' | 'bad' | 'info' } | null
+  toast: { id: number; text: string; tone?: 'good' | 'bad' | 'info'; action?: ToastAction } | null
   openDetail(ref: DetailRef): void
   back(): void
   closeDetail(): void
   setActiveCharacter(id: string | null): void
-  notify(text: string, tone?: 'good' | 'bad' | 'info'): void
+  /** Vis en kort melding. Med `action` får meldingen en knapp (f.eks. «Angre») og blir stående litt lenger. */
+  notify(text: string, tone?: 'good' | 'bad' | 'info', action?: ToastAction): void
+  dismissToast(): void
+}
+
+export interface ToastAction {
+  label: string
+  run: () => void
 }
 
 export const useUi = create<UiState>((set, get) => ({
@@ -47,14 +55,38 @@ export const useUi = create<UiState>((set, get) => ({
   setActiveCharacter(id) {
     set({ activeCharacterId: id })
   },
-  notify(text, tone = 'info') {
-    const id = Date.now()
-    set({ toast: { id, text, tone } })
-    setTimeout(() => {
-      if (get().toast?.id === id) set({ toast: null })
-    }, 2600)
+  notify(text, tone = 'info', action) {
+    const id = Date.now() + Math.random()
+    set({ toast: { id, text, tone, action } })
+    setTimeout(
+      () => {
+        if (get().toast?.id === id) set({ toast: null })
+      },
+      action ? 6000 : 2600
+    )
+  },
+  dismissToast() {
+    set({ toast: null })
   }
 }))
+
+/**
+ * Gjør en endring (typisk sletting) på en karakter og vis en melding med «Angre»-knapp.
+ * Angre virker bare så lenge ingenting annet er endret på karakteren etterpå – ellers vises et hint om Ctrl+Z.
+ */
+export function removeWithUndo(charId: string, recipe: (d: Character) => void, text: string): void {
+  const store = useCharacters.getState()
+  store.update(charId, recipe)
+  const after = useCharacters.getState().characters[charId]
+  useUi.getState().notify(text, 'info', {
+    label: i18n.t('polish.undo'),
+    run: () => {
+      const s = useCharacters.getState()
+      if (s.characters[charId] === after) s.undo(charId)
+      else useUi.getState().notify(i18n.t('polish.undoStale'), 'bad')
+    }
+  })
+}
 
 /** Lookup med globalt homebrew-bibliotek lagt over grunndataene */
 export function useLookup(): Lookup {

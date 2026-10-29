@@ -153,6 +153,7 @@ export function SpecialAbilityEditor({
       onClose={onClose}
       title={title ?? (initial ? t('ability.edit') : t('ability.create'))}
       width={820}
+      dismissable={false}
       footer={
         <>
           <button className="btn" onClick={onClose}>

@@ -30,6 +30,7 @@ export function SheetTab() {
           <FeatureSummary />
         </div>
         <div className="col-span-12 space-y-4 lg:col-span-5">
+          <SlotsSection />
           <ProficiencySection />
           <ConditionsSection />
           <DefensesSection />
@@ -50,7 +51,7 @@ function TopBand() {
     <div className="grid grid-cols-12 gap-3">
       <motion.div whileHover={{ y: -2 }} className="relative col-span-3 flex flex-col items-center justify-center rounded-2xl border border-gold/40 bg-gradient-to-b from-panel-3 to-panel-2 py-2 xl:col-span-2">
         <Shield className="absolute inset-0 m-auto text-gold/10" size={86} strokeWidth={1} />
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted">Armor Class</div>
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted">{t('polish.labels.armorClass')}</div>
         <div className="font-display text-4xl font-bold">
           <StatValue stat={d.ac} okey="ac" update={update} signed={false} rollable={false} />
         </div>
@@ -400,12 +401,17 @@ function AttacksSection() {
 }
 
 function AttackRow({ a }: { a: DerivedAttack }) {
+  const { t } = useTranslation()
   const { char, update } = useChar()
   const roll = useRolls((s) => s.roll)
   const ammo = useAmmo(a)
   const [critNext, setCritNext] = useState(false)
   const dmgNotation = a.damage.replace(/\s/g, '')
   const rollableDamage = /\d*d\d+/.test(dmgNotation)
+  const rollDamage = (crit: boolean): void => {
+    roll(dmgNotation, `${a.name} damage${crit ? ' (crit)' : ''}`, { critDouble: crit, character: char.name })
+    setCritNext(false)
+  }
   return (
     <motion.tr layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="border-t border-line-soft">
       <td className="py-1.5 pr-2">
@@ -436,21 +442,31 @@ function AttackRow({ a }: { a: DerivedAttack }) {
         )}
       </td>
       <td className="py-1.5 pr-2">
-        <button
-          disabled={!rollableDamage}
-          className={`rounded px-1 ${rollableDamage ? 'hover:bg-gold/15 hover:text-gold-2' : ''} ${critNext ? 'text-gold-2' : ''}`}
-          onClick={() => {
-            roll(dmgNotation, `${a.name} damage${critNext ? ' (crit)' : ''}`, { critDouble: critNext, character: char.name })
-            setCritNext(false)
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            setCritNext(!critNext)
-          }}
-          title="Klikk: rull skade · Høyreklikk: krit (dobbel terning)"
-        >
-          {a.damage} <span className="text-xs text-muted">{a.damageType}</span>
-        </button>
+        <span className="inline-flex items-center gap-1">
+          <button
+            disabled={!rollableDamage}
+            className={`rounded px-1 ${rollableDamage ? 'hover:bg-gold/15 hover:text-gold-2' : ''} ${critNext ? 'text-gold-2' : ''}`}
+            onClick={() => rollDamage(critNext)}
+            onContextMenu={(e) => {
+              if (!rollableDamage) return
+              e.preventDefault()
+              setCritNext(!critNext)
+            }}
+            title={rollableDamage ? (critNext ? t('polish.attack.critArmed') : t('polish.attack.damageTip')) : undefined}
+          >
+            {a.damage} <span className="text-xs text-muted">{a.damageType}</span>
+          </button>
+          {rollableDamage && (
+            <button
+              className={`rounded border px-1 text-[9px] font-bold uppercase leading-4 tracking-wider ${critNext ? 'border-gold bg-gold/20 text-gold-2' : 'border-line-soft text-faint hover:border-gold/60 hover:text-gold-2'}`}
+              onClick={() => rollDamage(true)}
+              title={t('polish.attack.critTip')}
+              aria-label={t('polish.attack.critTip')}
+            >
+              {t('polish.attack.crit')}
+            </button>
+          )}
+        </span>
       </td>
       <td className="py-1.5 text-[11px] text-muted">
         {[a.range, ...a.properties.filter((p) => p !== 'range').map((p) => p.charAt(0).toUpperCase() + p.slice(1)), ...a.notes].filter(Boolean).join(' · ')}
@@ -582,6 +598,58 @@ function ProficiencySection() {
   )
 }
 
+/** Kompakt oversikt over spell slots for casters – klikk en prikk for å bruke/gi tilbake */
+function SlotsSection() {
+  const { t } = useTranslation()
+  const { derived: d, update, goTo } = useChar()
+  if (!d.slots.length && !d.pact) return null
+  return (
+    <Section
+      title={
+        <span className="flex items-center gap-1.5">
+          <Sparkles size={13} /> {t('spells.slots')}
+        </span>
+      }
+      actions={
+        <button className="btn btn-ghost btn-sm" onClick={() => goTo?.('spells')}>
+          {t('tabs.spells')}
+        </button>
+      }
+    >
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {d.slots.map((s) => (
+          <div key={s.level} className="flex items-center gap-1.5" title={t('polish.labels.slotsLeft', { n: s.max - s.used, max: s.max })}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">{t('polish.labels.slotShort', { n: s.level })}</span>
+            {Array.from({ length: s.max }, (_, i) => (
+              <motion.button
+                key={i}
+                whileTap={{ scale: 0.75 }}
+                aria-label={t('polish.labels.slotsLeft', { n: s.max - s.used, max: s.max })}
+                onClick={() => update((c) => void (c.spellSlotsUsed[s.level - 1] = i < s.used ? i : i + 1))}
+                className={`h-3.5 w-3.5 rounded-full border-2 ${i < s.max - s.used ? 'border-arcane bg-arcane/70' : 'border-line'}`}
+              />
+            ))}
+          </div>
+        ))}
+        {d.pact && (
+          <div className="flex items-center gap-1.5" title={t('polish.labels.slotsLeft', { n: d.pact.count - d.pact.used, max: d.pact.count })}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">{t('polish.labels.pactShort', { n: d.pact.level })}</span>
+            {Array.from({ length: d.pact.count }, (_, i) => (
+              <motion.button
+                key={i}
+                whileTap={{ scale: 0.75 }}
+                aria-label={t('polish.labels.slotsLeft', { n: d.pact!.count - d.pact!.used, max: d.pact!.count })}
+                onClick={() => update((c) => void (c.pactSlotsUsed = i < d.pact!.used ? i : i + 1))}
+                className={`h-3.5 w-3.5 rotate-45 border-2 ${i < d.pact!.count - d.pact!.used ? 'border-arcane bg-arcane/70' : 'border-line'}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </Section>
+  )
+}
+
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mb-1.5 text-[12.5px]">
@@ -601,15 +669,16 @@ function ConditionsSection() {
         {conds.map((c) => {
           const on = char.conditions.includes(c.id)
           return (
-            <motion.button
-              key={c.id}
-              whileTap={{ scale: 0.9 }}
-              className={`chip cursor-pointer ${on ? 'border-crimson bg-crimson/20 text-crimson-2' : 'hover:text-ink'}`}
-              onClick={() => update((d) => void (d.conditions = on ? d.conditions.filter((x) => x !== c.id) : [...d.conditions, c.id]))}
-              onContextMenu={(e) => e.preventDefault()}
-            >
-              {c.name}
-            </motion.button>
+            <Tip key={c.id} content={c.summary}>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                aria-pressed={on}
+                className={`chip cursor-pointer ${on ? 'border-crimson bg-crimson/20 text-crimson-2' : 'hover:text-ink'}`}
+                onClick={() => update((d) => void (d.conditions = on ? d.conditions.filter((x) => x !== c.id) : [...d.conditions, c.id]))}
+              >
+                {c.name}
+              </motion.button>
+            </Tip>
           )
         })}
       </div>
