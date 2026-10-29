@@ -13,6 +13,8 @@ import { addEffect, addLog, applyDamage, deathSave, dropConcentration, endEffect
 import { useRolls } from '../../store/rolls'
 import { EntityPicker } from '../EntityPicker'
 import type { CreatureDef } from '../../types'
+import { useHotkeyListener } from '../../lib/hotkeys'
+import { AddCompanionsButton } from './CompanionsButton'
 
 const DAMAGE_TYPES: DamageType[] = ['acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder']
 const ABIL: Record<Ability, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
@@ -449,6 +451,7 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
   const [form, setForm] = useState<{ name: string; init: string; initMod: string; hp: string; ac: string; count: number; ally: boolean } | null>(null)
   const [dmgFor, setDmgFor] = useState<Record<string, string>>({})
   const [bestiary, setBestiary] = useState(false)
+  useHotkeyListener('next', () => onNext())
 
   /** Legg til skapninger fra bestiariet (SRD-monstre og egne) med AC, HP og rullet initiativ */
   const addCreatures = (list: CreatureDef[]): void =>
@@ -506,6 +509,7 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
       title={t('combat.initiative')}
       actions={
         <>
+          <AddCompanionsButton />
           <button className="btn btn-sm" onClick={() => setBestiary(true)} title={t('combat.bestiaryTip')}>
             <BookOpen size={13} /> {t('combat.bestiary')}
           </button>

@@ -6,6 +6,7 @@ import { useSettings } from '../store/settings'
 import { Section, Toggle } from '../components/ui'
 import { api } from '../lib/api'
 import { ATTRIBUTION, DISCLAIMER_PHB, allEntities } from '../data'
+import { HotkeysSection, UiScaleRow } from '../components/SettingsExtras'
 
 export default function SettingsPage() {
   const { t } = useTranslation()
@@ -63,8 +64,10 @@ export default function SettingsPage() {
           <Row label={t('settings.showTips')}>
             <Toggle checked={s.showTips} onChange={(v) => s.set({ showTips: v })} />
           </Row>
+          <UiScaleRow />
         </div>
       </Section>
+      <HotkeysSection />
       <Section title={t('settings.rules')}>
         <div className="space-y-4">
           <Row label={t('settings.hpMethod')}>

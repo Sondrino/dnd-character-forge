@@ -7,6 +7,7 @@ import { useRolls } from '../store/rolls'
 import { useSettings } from '../store/settings'
 import { isValidNotation, type RollResult } from '../dice'
 import { DICE_SETTLED, DICE_THEMES } from './dice3d/themes'
+import { DiceMacros } from './DiceMacros'
 
 /* ------------------------------------------------------------------ */
 /* Terningikon (SVG med fasetter og lys)                               */
@@ -447,6 +448,8 @@ export function DiceTray() {
                   ))}
                 </div>
               </div>
+
+              <DiceMacros />
 
               <form
                 className="flex gap-2"

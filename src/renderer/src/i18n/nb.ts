@@ -1,4 +1,5 @@
 import { combatNb } from './combat'
+import { toolsNb } from './tools'
 import { abilityNb } from './ability'
 
 export const nb = {
@@ -222,5 +223,6 @@ export const nb = {
     auto: 'Auto', adjustment: 'Justering', fixed: 'Fast', result: 'Resultat'
   },
   combat: combatNb,
+  tools: toolsNb,
   ability: abilityNb
 }

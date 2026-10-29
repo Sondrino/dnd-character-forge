@@ -2,6 +2,7 @@ import type { Character, CombatState, SpellDef } from '../../types'
 import type { DerivedAttack, DerivedFeature, Derived } from '../../engine/compute'
 import type { Lookup } from '../../engine/lookup'
 import { useChar, type CharCtxValue } from '../sheet/context'
+import { syncCompanionsFromCombat } from '../../lib/companions'
 import { AT_WILL_INVOCATIONS, attacksPerAction, castingKind, featureGrantedSpells } from '../../lib/combat'
 
 export interface CombatCtx extends CharCtxValue {
@@ -17,6 +18,7 @@ export function useCombat(): CombatCtx {
   const mut = (recipe: (c: CombatState, ch: Character) => void): void =>
     ctx.update((ch) => {
       if (ch.combat) recipe(ch.combat, ch)
+      syncCompanionsFromCombat(ch)
     })
   return { ...ctx, c, physical: c.dice === 'physical', mut }
 }

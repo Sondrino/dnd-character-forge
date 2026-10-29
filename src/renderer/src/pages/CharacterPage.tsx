@@ -18,14 +18,17 @@ import { TipsPanel } from '../components/sheet/TipsPanel'
 import { LevelUpModal, LevelDownModal } from '../components/sheet/LevelUp'
 import { FixGuide } from '../components/sheet/FixGuide'
 import { AdjustTab } from '../components/sheet/AdjustTab'
+import { JournalTab } from '../components/sheet/JournalTab'
+import { useHotkeyListener } from '../lib/hotkeys'
 import { ClassEmblem } from '../components/ClassEmblem'
 import { EntityLink } from '../components/EntityInfo'
 import { api } from '../lib/api'
+import { exportCharacter } from '../lib/exportCharacter'
 import { syncGrantedSpells } from '../lib/sync'
 import type { Character } from '../types'
 import type { Derived } from '../engine/compute'
 
-type TabId = 'sheet' | 'spells' | 'inventory' | 'features' | 'adjust' | 'details' | 'custom'
+type TabId = 'sheet' | 'spells' | 'inventory' | 'features' | 'adjust' | 'details' | 'custom' | 'journal'
 
 export default function CharacterPage() {
   const { id } = useParams()
@@ -43,7 +46,16 @@ export default function CharacterPage() {
   const openGuide = (key?: string, area?: 'spells' | 'other'): void => setGuide({ open: true, key, area })
   const [pdf, setPdf] = useState(false)
   // ?rest=short åpner short rest direkte (f.eks. etter en kamp)
-  const [rest, setRest] = useState<'short' | 'long' | null>(params.get('rest') === 'short' ? 'short' : null)
+  const [rest, setRest] = useState<'short' | 'long' | null>(null)
+  // ?rest=short|long (fra kampen eller hurtigsøket) åpner hvilen og fjernes fra adressen
+  const restParam = params.get('rest')
+  useEffect(() => {
+    if (restParam !== 'short' && restParam !== 'long') return
+    setRest(restParam)
+    const p = new URLSearchParams(params)
+    p.delete('rest')
+    setParams(p, { replace: true })
+  }, [restParam])
   const tab = (params.get('tab') as TabId) || 'sheet'
   const setTab = (x: string): void => {
     if (x === 'build') nav(`/character/${id}/build?step=abilities`)
@@ -68,6 +80,12 @@ export default function CharacterPage() {
     if (char && derived && char.hp.current > derived.hpMax.value) update((c) => void (c.hp.current = derived.hpMax.value))
   }, [derived?.hpMax.value])
 
+  // Hurtigtast 1–8 bytter fane
+  useHotkeyListener('tab', (a) => {
+    const ids: TabId[] = ['sheet', 'spells', 'inventory', 'features', 'adjust', 'details', 'custom', 'journal']
+    if (char && ids[a.index]) setTab(ids[a.index])
+  })
+
   if (!char || !derived) {
     return <div className="p-10 text-center text-muted">{loaded ? t('char.notFound') : t('common.loading')}</div>
   }
@@ -80,7 +98,8 @@ export default function CharacterPage() {
     { id: 'features', label: t('tabs.features'), badge: derived.pending.filter((p) => p.area !== 'spells').length },
     { id: 'adjust', label: t('tabs.adjust') },
     { id: 'details', label: t('tabs.details') },
-    { id: 'custom', label: t('tabs.custom') }
+    { id: 'custom', label: t('tabs.custom') },
+    { id: 'journal', label: t('tools.journal.tab') }
   ]
 
   return (
@@ -159,7 +178,7 @@ export default function CharacterPage() {
             <button className="btn" onClick={() => setPdf(true)}>
               <FileText size={15} /> PDF
             </button>
-            <button className="btn" onClick={() => api.exportCharacter(char)} title={t('home.export')}>
+            <button className="btn" onClick={() => exportCharacter(char)} title={t('home.export')}>
               <Download size={15} />
             </button>
             <button className="btn" onClick={() => setLevelDown(true)} disabled={derived.totalLevel <= 1} title={t('char.levelDown')}>
@@ -211,6 +230,7 @@ export default function CharacterPage() {
                 {tab === 'adjust' && <AdjustTab />}
                 {tab === 'details' && <DetailsTab />}
                 {tab === 'custom' && <CustomTab />}
+                {tab === 'journal' && <JournalTab />}
               </motion.div>
             </AnimatePresence>
           </div>

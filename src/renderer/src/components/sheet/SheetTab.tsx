@@ -14,6 +14,8 @@ import { d20 } from '../../dice'
 import { EntityLink } from '../EntityInfo'
 import { applyDamage, deathSave } from '../../lib/combat'
 import type { DerivedAttack, DerivedFeature } from '../../engine/compute'
+import { WildShapePanel } from './WildShapePanel'
+import { CompanionsPanel } from './CompanionsPanel'
 
 export function SheetTab() {
   return (
@@ -23,12 +25,14 @@ export function SheetTab() {
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-12 space-y-4 lg:col-span-7">
           <AttacksSection />
+          <WildShapePanel />
           <FeatureSummary />
         </div>
         <div className="col-span-12 space-y-4 lg:col-span-5">
           <ProficiencySection />
           <ConditionsSection />
           <DefensesSection />
+          <CompanionsPanel />
         </div>
       </div>
     </div>
