@@ -99,7 +99,7 @@ export function ChargesTracker({ it, idx, max }: { it: InventoryItem; idx: numbe
               key={i}
               aria-label={i < left ? t('items.useCharge') : t('items.regainCharge')}
               className={`h-2.5 w-2.5 rounded-full border border-arcane ${i < left ? 'bg-arcane' : 'bg-transparent'}`}
-              onClick={() => set(i + 1 === left ? i : i + 1)}
+              onClick={() => set(i < left ? i : i + 1)}
             />
           ))
         ) : (

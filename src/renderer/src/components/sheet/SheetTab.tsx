@@ -19,6 +19,7 @@ import type { DerivedAttack, DerivedFeature } from '../../engine/compute'
 import { WildShapePanel } from './WildShapePanel'
 import { CompanionsPanel } from './CompanionsPanel'
 import { ActiveEffects } from './ActiveEffects'
+import { pipClick } from '../../lib/pips'
 
 export function SheetTab() {
   return (
@@ -509,7 +510,7 @@ export function UsesTracker({ f }: { f: DerivedFeature }) {
         <motion.button
           key={i}
           whileTap={{ scale: 0.7 }}
-          onClick={() => update((c) => void (c.featureUses[f.key] = i < used ? i : i + 1))}
+          onClick={() => update((c) => void (c.featureUses[f.key] = pipClick(i, max, used)))}
           className={`h-3.5 w-3.5 rotate-45 border ${i < max - used ? 'border-gold bg-gold/80' : 'border-line bg-transparent'}`}
           style={{ borderRadius: 3 }}
         />
@@ -632,7 +633,7 @@ function SlotsSection() {
                 key={i}
                 whileTap={{ scale: 0.75 }}
                 aria-label={t('polish.labels.slotsLeft', { n: s.max - s.used, max: s.max })}
-                onClick={() => update((c) => void (c.spellSlotsUsed[s.level - 1] = i < s.used ? i : i + 1))}
+                onClick={() => update((c) => void (c.spellSlotsUsed[s.level - 1] = pipClick(i, s.max, s.used)))}
                 className={`h-3.5 w-3.5 rounded-full border-2 ${i < s.max - s.used ? 'border-arcane bg-arcane/70' : 'border-line'}`}
               />
             ))}
@@ -646,7 +647,7 @@ function SlotsSection() {
                 key={i}
                 whileTap={{ scale: 0.75 }}
                 aria-label={t('polish.labels.slotsLeft', { n: d.pact!.count - d.pact!.used, max: d.pact!.count })}
-                onClick={() => update((c) => void (c.pactSlotsUsed = i < d.pact!.used ? i : i + 1))}
+                onClick={() => update((c) => void (c.pactSlotsUsed = pipClick(i, d.pact!.count, d.pact!.used)))}
                 className={`h-3.5 w-3.5 rotate-45 border-2 ${i < d.pact!.count - d.pact!.used ? 'border-arcane bg-arcane/70' : 'border-line'}`}
               />
             ))}

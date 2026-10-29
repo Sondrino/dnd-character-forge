@@ -16,6 +16,7 @@ import { spellFilter } from '../../lib/spellFilter'
 import { freeCasts } from '../../lib/combat'
 import { CastDialog } from '../CastDialog'
 import { magicalCunningRegain } from '../../lib/rest'
+import { pipClick } from '../../lib/pips'
 
 export function SpellsTab() {
   const { t } = useTranslation()
@@ -97,7 +98,7 @@ export function SpellsTab() {
                       key={i}
                       whileTap={{ scale: 0.75 }}
                       whileHover={{ scale: 1.1 }}
-                      onClick={() => update((c) => void (c.spellSlotsUsed[s.level - 1] = i < s.used ? i : i + 1))}
+                      onClick={() => update((c) => void (c.spellSlotsUsed[s.level - 1] = pipClick(i, s.max, s.used)))}
                       className={`h-5 w-5 rounded-full border-2 ${i < s.max - s.used ? 'border-arcane bg-arcane/70 shadow-[0_0_8px_var(--arcane)]' : 'border-line'}`}
                     />
                   ))}
@@ -115,7 +116,7 @@ export function SpellsTab() {
                     <motion.button
                       key={i}
                       whileTap={{ scale: 0.75 }}
-                      onClick={() => update((c) => void (c.pactSlotsUsed = i < d.pact!.used ? i : i + 1))}
+                      onClick={() => update((c) => void (c.pactSlotsUsed = pipClick(i, d.pact!.count, d.pact!.used)))}
                       className={`h-5 w-5 rotate-45 border-2 ${i < d.pact!.count - d.pact!.used ? 'border-arcane bg-arcane/70' : 'border-line'}`}
                     />
                   ))}
