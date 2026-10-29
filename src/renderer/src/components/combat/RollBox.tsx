@@ -9,7 +9,7 @@ import { useRolls } from '../../store/rolls'
  * f.eks. når man mangler terninger). Med app-terninger er «Rull» hovedknappen, men verdien kan alltid overstyres.
  */
 export function RollBox({
-  label, notation, value, onValue, physical, d20 = false, character, hint, autoFocus
+  label, notation, value, onValue, physical, d20 = false, character, hint, autoFocus, initialMode, modeWhy
 }: {
   label: string
   notation: string
@@ -21,10 +21,15 @@ export function RollBox({
   character?: string
   hint?: string
   autoFocus?: boolean
+  /** Forhåndsvalgt advantage/disadvantage (f.eks. fra conditions); kan alltid endres */
+  initialMode?: RollMode
+  /** Hvorfor modusen er forhåndsvalgt (kilder), vises som liten tekst */
+  modeWhy?: string[]
 }) {
   const { t } = useTranslation()
   const roll = useRolls((s) => s.roll)
-  const [mode, setMode] = useState<RollMode>('normal')
+  const [mode, setMode] = useState<RollMode>(initialMode ?? 'normal')
+  useEffect(() => setMode(initialMode ?? 'normal'), [initialMode])
   const [last, setLast] = useState<RollResult | null>(null)
   const [text, setText] = useState(value === null ? '' : String(value))
   useEffect(() => setText(value === null ? '' : String(value)), [value])
@@ -101,6 +106,11 @@ export function RollBox({
         )}
         {physical && d20 && mode !== 'normal' && <span className="text-xs text-muted">{t(mode === 'advantage' ? 'combat.rollTwoHigh' : 'combat.rollTwoLow')}</span>}
       </div>
+      {d20 && !!modeWhy?.length && (
+        <div className={`mt-1 text-[11px] ${initialMode === 'advantage' ? 'text-good' : initialMode === 'disadvantage' ? 'text-bad' : 'text-muted'}`}>
+          {t(`spellsx.mode.${initialMode ?? 'normal'}`)}: {modeWhy.join(', ')}
+        </div>
+      )}
     </div>
   )
 }

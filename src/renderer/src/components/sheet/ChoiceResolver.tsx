@@ -12,7 +12,7 @@ import { EntityPicker } from '../EntityPicker'
 import { uid } from '../../store/characters'
 import { useUi } from '../../store/ui'
 import { spellFilter } from '../../lib/spellFilter'
-import { featPrereqProblems } from '../../lib/rules'
+import { chosenOptionIds, featPrereqProblems, optionPrereqProblems } from '../../lib/rules'
 import { EntityLink } from '../EntityInfo'
 
 interface Opt {
@@ -155,7 +155,10 @@ export function ChoiceResolver({ p, compact }: { p: PendingChoice; compact?: boo
         <div className="space-y-2">
           {(['standard', 'rare'] as const).map((r) => (
             <div key={r}>
-              <div className="mb-1 text-[10px] uppercase tracking-widest text-faint">{r}</div>
+              <div className="mb-1 text-[10px] uppercase tracking-widest text-faint">
+                {r}
+                {r === 'rare' && p.key === 'origin:languages#language' && <span className="normal-case tracking-normal"> – {t('spellsx.rareLangHint')}</span>}
+              </div>
               <ChipChoice options={langs.filter((l) => l.rarity === r).map((l) => ({ id: l.id, label: l.name }))} value={values} count={p.count} onChange={set} />
             </div>
           ))}
@@ -170,8 +173,13 @@ export function ChoiceResolver({ p, compact }: { p: PendingChoice; compact?: boo
       const group = groups.length ? { group: p.filter!, items: merged } : undefined
       // Invocations o.l. med level-krav vises først fra det class-levelet
       const clsLvl = char.classes.find((c) => c.classId === /^class:([^:]+):/.exec(p.key)?.[1])?.level ?? derived.totalLevel
+      // Andre forutsetninger (Pact of the Blade, Thirsting Blade, en skade-cantrip …) – valgte vises alltid
+      const groupClass = groups[0]?.classId ?? ''
+      const chosenOpts = chosenOptionIds(char, L)
       const opts: Opt[] = group
-        ? group.items.filter((it) => ((it as { level?: number }).level ?? 0) <= clsLvl || values.includes(it.id)).map((it) => ({ id: it.id, label: it.name }))
+        ? group.items
+            .filter((it) => values.includes(it.id) || (((it as { level?: number }).level ?? 0) <= clsLvl && !optionPrereqProblems(it, groupClass, char, L, chosenOpts).length))
+            .map((it) => ({ id: it.id, label: it.name }))
         : (p.options ?? []).map((o) => ({ id: o, label: L.get('class', o)?.name ?? cap(o) }))
       body = (
         <div className="space-y-2">

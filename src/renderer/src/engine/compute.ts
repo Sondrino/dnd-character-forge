@@ -8,6 +8,7 @@ import type { Lookup } from './lookup'
 import { abilityMod, averageHitDie, MULTICLASS_PROFS, PACT_SLOTS, proficiencyBonus, signed, SPELL_SLOTS, SUBCLASS_SPELLCASTING } from './tables'
 import { evalFormula, type FormulaContext } from './formula'
 import { qtyDivisor } from '../lib/items'
+import { CONDITION_EFFECTS, conditionLabel } from '../data/conditionEffects'
 
 /* ------------------------------------------------------------------ */
 /* Typer for beregnet ark                                              */
@@ -36,6 +37,8 @@ export interface DerivedFeature {
   roll?: Feature['roll']
   toggle?: string
   duration?: number
+  /** Krever concentration når den brukes */
+  concentration?: boolean
   entityKind?: string
   entityId?: string
 }
@@ -121,7 +124,7 @@ export interface Derived {
   carry: { weight: number; capacity: number; dragLift: number }
   weaponMasteryMax: number
   /** Spellcasting for spells fra feats/species (Magic Initiate, lineages): kilde → evne, DC og angrep */
-  spellSources: Record<string, { ability: Ability; mod: number; dc: number; attack: number }>
+  spellSources: Record<string, { ability: Ability; mod: number; dc: number; attack: number; advantage?: string[]; disadvantage?: string[] }>
   attunedCount: number
   armorWorn?: ArmorDef
   shieldWorn: boolean
@@ -289,7 +292,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
       const key = `class:${def.id}:${f.id}`
       features.push({
         key, id: f.id, name: f.name, source: `${def.name} ${f.level ?? 1}`, sourceType: 'class', level: f.level,
-        summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, toggle: f.toggle, duration: f.duration,
+        summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, toggle: f.toggle, duration: f.duration, concentration: f.concentration,
         uses: undefined
       })
       addEffects(f.effects, `${def.name}: ${f.name}`, ce.level)
@@ -301,7 +304,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
         const key = `subclass:${sub.id}:${f.id}`
         features.push({
           key, id: f.id, name: f.name, source: `${sub.name} ${f.level ?? def.subclassLevel}`, sourceType: 'subclass', level: f.level,
-          summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, toggle: f.toggle, duration: f.duration,
+          summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, toggle: f.toggle, duration: f.duration, concentration: f.concentration,
           uses: undefined
         })
         addEffects(f.effects, `${sub.name}: ${f.name}`, ce.level)
@@ -346,7 +349,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
       const key = `species:${species.id}:${t.id}`
       features.push({
         key, id: t.id, name: t.name, source: species.name, sourceType: 'species', summary: t.summary, description: t.description,
-        activation: t.activation, uses: undefined, roll: t.roll, toggle: t.toggle, duration: t.duration
+        activation: t.activation, uses: undefined, roll: t.roll, toggle: t.toggle, duration: t.duration, concentration: t.concentration
       })
       addEffects(t.effects, `${species.name}: ${t.name}`)
       featureChoices.push({ feature: t, source: `${species.name}: ${t.name}`, keyBase: `species:${species.id}:${t.id}`, area: 'species' })
@@ -460,7 +463,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
   // Custom features
   for (const f of char.customFeatures ?? []) {
     const key = `custom:${f.id}`
-    features.push({ key, id: f.id, name: f.name, source: 'Custom', sourceType: 'custom', summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, toggle: f.toggle, duration: f.duration })
+    features.push({ key, id: f.id, name: f.name, source: 'Custom', sourceType: 'custom', summary: f.summary, description: f.description, activation: f.activation, roll: f.roll, toggle: f.toggle, duration: f.duration, concentration: f.concentration })
     addEffects(f.effects, f.name)
   }
 
@@ -486,6 +489,12 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
 
   // Manuelle effects
   for (const ce of char.customEffects ?? []) if (ce.active) effects.push({ source: ce.label || 'Custom', effect: ce })
+
+  // Conditions (2024): Advantage/Disadvantage på angrep, checks og saves (data/conditionEffects.ts)
+  for (const c of new Set(char.conditions ?? [])) {
+    const list = CONDITION_EFFECTS[c]
+    if (list) addEffects(list, `Condition: ${conditionLabel(c)}`)
+  }
 
   const activeEffects = effects.filter((e) => conditionActive(e.effect.condition, ectx))
   const eff = (target: string, op?: Effect['op']): { source: string; effect: Effect; classLevel?: number }[] =>
@@ -710,6 +719,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     v += exhaustionPenalty(bd)
     const s = stat(v, bd)
     s.advantage = [...eff(`check.${a}`, 'advantage'), ...eff('check.all', 'advantage')].map((e) => e.effect.note ?? e.source)
+    s.disadvantage = [...eff(`check.${a}`, 'disadvantage'), ...eff('check.all', 'disadvantage')].map((e) => e.effect.note ?? e.source)
     applyOverride(s, `check.${a}`)
     checks[a] = s
   }
@@ -781,6 +791,8 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
   init += exhaustionPenalty(initBd)
   const initiative = stat(init, initBd)
   initiative.advantage = eff('initiative', 'advantage').map((e) => e.effect.note ?? e.source)
+  // Initiative er en Dexterity check (2024): Disadvantage på checks (Poisoned, Frightened …) gjelder også her
+  initiative.disadvantage = [...eff('initiative', 'disadvantage'), ...eff('check.dex', 'disadvantage'), ...eff('check.all', 'disadvantage')].map((e) => e.effect.note ?? e.source)
   applyOverride(initiative, 'initiative')
 
   /* ---------- AC ---------- */
@@ -994,6 +1006,14 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
   const attacks: DerivedAttack[] = []
   const meleeBonusTargets = ['attack.all', 'attack.melee']
   const rangedBonusTargets = ['attack.all', 'attack.ranged']
+  /** Advantage/Disadvantage på angrepsrull (conditions, effekter med 'attack.*' advantage/disadvantage) */
+  const rollMode = (s: Stat, targets: string[]): Stat => {
+    s.advantage = targets.flatMap((tg) => eff(tg, 'advantage')).map((e) => e.effect.note ?? e.source)
+    s.disadvantage = targets.flatMap((tg) => eff(tg, 'disadvantage')).map((e) => e.effect.note ?? e.source)
+    return s
+  }
+  const spellAttackTargets = ['attack.all', 'attack.spell', 'spell.attack']
+  for (const sc of spellcasting) rollMode(sc.attack, spellAttackTargets)
   const monk = classEntries.find((x) => x.def.id === 'monk')
   const martialArtsDie = monk ? String(monk.def.table?.find((r) => r.level === monk.ce.level)?.columns?.['Martial Arts'] ?? '') : ''
 
@@ -1018,7 +1038,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     }
     b += sumAdd(ranged ? rangedBonusTargets : meleeBonusTargets, bd)
     b += exhaustionPenalty(bd)
-    const bonus = stat(b, bd)
+    const bonus = rollMode(stat(b, bd), ranged ? rangedBonusTargets : meleeBonusTargets)
     applyOverride(bonus, `attack.${r.item.uid}.bonus`)
     const dmgBd: string[] = []
     let dmgMod = mods[ab] + magicBonus + sumAdd(['damage.all', ranged ? 'damage.ranged' : 'damage.melee'], dmgBd)
@@ -1048,7 +1068,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     const ab: Ability = monk && mods.dex > mods.str ? 'dex' : 'str'
     const bd = [`${abilityNamesShort[ab]} mod: ${signed(mods[ab])}`, `Proficiency: ${signed(P)}`]
     const b = mods[ab] + P + sumAdd(meleeBonusTargets, bd) + exhaustionPenalty(bd)
-    const bonus = stat(b, bd)
+    const bonus = rollMode(stat(b, bd), meleeBonusTargets)
     applyOverride(bonus, 'attack.unarmed.bonus')
     const dmg = martialArtsDie ? `${martialArtsDie}${signed(mods[ab])}` : `${Math.max(0, 1 + mods[ab])}`
     attacks.push({ key: 'unarmed', name: 'Unarmed Strike', kind: 'unarmed', bonus, damage: dmg, damageType: 'bludgeoning', properties: [], range: '5 ft.', masteryActive: false, proficient: true, notes: [] })
@@ -1071,7 +1091,8 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
       const atBd: string[] = []
       const dc = 8 + P + mods[ab] + sumAdd(['spell.dc'], dcBd)
       const attack = P + mods[ab] + sumAdd(['spell.attack', 'attack.spell'], atBd) + exhaustionPenalty(atBd)
-      spellSources[cs.source] = { ability: ab, mod: mods[ab], dc, attack }
+      const m = rollMode(stat(attack), spellAttackTargets)
+      spellSources[cs.source] = { ability: ab, mod: mods[ab], dc, attack, advantage: m.advantage, disadvantage: m.disadvantage }
     }
   }
   // Damage cantrips og angreps-spells
@@ -1091,7 +1112,7 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
     }
     attacks.push({
       key: `spell:${sp.id}`, name: sp.name, kind: 'spell',
-      bonus: sp.attack ? caster.attack : null,
+      bonus: sp.attack ? (caster.attack.advantage ? caster.attack : rollMode({ ...caster.attack }, spellAttackTargets)) : null,
       save: sp.save ? { ability: sp.save, dc: caster.dc.value } : undefined,
       damage: dice, damageType: String(sp.damage.type), properties: [sp.level === 0 ? 'Cantrip' : `Level ${sp.level}`],
       range: sp.range, masteryActive: false, proficient: true, notes: spellNotes, refId: sp.id

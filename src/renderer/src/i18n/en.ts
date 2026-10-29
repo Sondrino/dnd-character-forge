@@ -5,6 +5,7 @@ import { itemsEn } from './items'
 import { abilityEn } from './ability'
 import { partyEn } from './party'
 import { polishEn } from './polish'
+import { spellsxEn } from './spellsx'
 
 export const en: typeof nb = {
   nav: { characters: 'Characters', compendium: 'Compendium', homebrew: 'Homebrew', settings: 'Settings', dice: 'Dice' },
@@ -227,5 +228,6 @@ export const en: typeof nb = {
   tools: toolsEn,
   items: itemsEn,
   ability: abilityEn,
-  polish: polishEn
+  polish: polishEn,
+  spellsx: spellsxEn
 }

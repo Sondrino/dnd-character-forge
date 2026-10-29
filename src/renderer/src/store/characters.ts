@@ -76,6 +76,7 @@ export function normalizeCharacter(raw: Partial<Character>): Character {
   c.journal = Array.isArray(raw.journal) ? raw.journal : []
   // Homebrew som fulgte med en eksportert fil hører ikke hjemme på selve karakteren
   delete (c as Character & { bundledHomebrew?: unknown }).bundledHomebrew
+  c.effects = Array.isArray(raw.effects) ? raw.effects : []
   return c
 }
 

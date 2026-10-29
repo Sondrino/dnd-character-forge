@@ -4,6 +4,7 @@ import { itemsNb } from './items'
 import { abilityNb } from './ability'
 import { partyNb } from './party'
 import { polishNb } from './polish'
+import { spellsxNb } from './spellsx'
 
 export const nb = {
   nav: { characters: 'Karakterer', compendium: 'Oppslag', homebrew: 'Homebrew', settings: 'Innstillinger', dice: 'Terninger' },
@@ -230,5 +231,6 @@ export const nb = {
   tools: toolsNb,
   items: itemsNb,
   ability: abilityNb,
-  polish: polishNb
+  polish: polishNb,
+  spellsx: spellsxNb
 }

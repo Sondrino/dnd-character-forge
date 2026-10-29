@@ -149,6 +149,8 @@ export interface Feature {
   toggle?: string
   /** Varighet i runder når den slås på i kamp */
   duration?: number
+  /** Krever concentration (som et spell): bruk avslutter annen concentration */
+  concentration?: boolean
 }
 
 export type ArmorCategory = 'light' | 'medium' | 'heavy' | 'shield'
@@ -648,6 +650,10 @@ export interface Character {
   archived?: boolean
   /** Pågående kamp (kampmodus) */
   combat?: CombatState
+  /** Concentration utenfor kamp (flyttes inn i kampen ved start og tilbake ved slutt) */
+  concentration?: { name: string; spellId?: string; since?: string }
+  /** Tidsbegrensede effekter utenfor kamp (spells kastet før/etter en kamp); rounds: 1 runde = 6 sek */
+  effects?: CombatEffect[]
   /** Druid Wild Shape: kjente beast-former (creature-ids) og ev. aktiv form */
   wildShape?: { knownForms: string[]; activeForm?: string }
   /** Familiars, dyrevenner, steeds, summons */

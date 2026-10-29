@@ -14,6 +14,8 @@ import { EMPTY_SPELL_FILTER, isSpellFilterActive, matchOwnSpell, type OwnSpellFi
 import { abilityNames } from '../../data/skills'
 import { spellFilter } from '../../lib/spellFilter'
 import { freeCasts } from '../../lib/combat'
+import { CastDialog } from '../CastDialog'
+import { magicalCunningRegain } from '../../lib/rest'
 
 export function SpellsTab() {
   const { t } = useTranslation()
@@ -22,6 +24,8 @@ export function SpellsTab() {
   const [anyPicker, setAnyPicker] = useState(false)
   const notify = useUi((s) => s.notify)
   const roll = useRolls((s) => s.roll)
+  // Kast-dialogen (samme som i kampmodus: slot-nivå, gratis-kast, ritual, concentration, effekter)
+  const [casting, setCasting] = useState<{ sp: SpellDef; source: string } | null>(null)
 
   const spells = char.spells
     .map((s, idx) => ({ s, idx, def: L.get('spell', s.spellId) as SpellDef | undefined }))
@@ -37,22 +41,6 @@ export function SpellsTab() {
       {label}
     </button>
   )
-
-  const useSlot = (level: number): boolean => {
-    const pactOk = d.pact && d.pact.level >= level && d.pact.used < d.pact.count
-    const slot = d.slots.find((s) => s.level >= level && s.used < s.max)
-    if (slot) {
-      update((c) => {
-        c.spellSlotsUsed[slot.level - 1] = (c.spellSlotsUsed[slot.level - 1] ?? 0) + 1
-      })
-      return true
-    }
-    if (pactOk) {
-      update((c) => void (c.pactSlotsUsed += 1))
-      return true
-    }
-    return false
-  }
 
   const caster = d.spellcasting[0]
   return (
@@ -135,6 +123,7 @@ export function SpellsTab() {
                 <span className="ml-auto text-[10px] text-muted">{t('spells.shortRest')}</span>
               </div>
             )}
+            {d.pact && <MagicalCunning />}
           </div>
           {(d.slots.length > 0 || d.pact) && (
             <button
@@ -236,17 +225,13 @@ export function SpellsTab() {
                           🎲 {scaleCantrip(dmg, sp, d.totalLevel)}
                         </button>
                       )}
-                      {sp.level > 0 && (
+                      {(sp.level > 0 || sp.concentration || sp.attack || sp.save || sp.heal || sp.tempHp || /minute|hour|round/i.test(sp.duration)) && (
                         <button
-                          className="btn btn-sm"
+                          className={`btn btn-sm ${sp.level > 0 && freeCasts(char, d, L, sp).some((f) => f.left === null || f.left > 0) ? 'border-good/60 text-good' : ''}`}
                           onClick={() => {
-                            // Gratis-kast (feat, species, Favored Enemy …) brukes før spell slots
-                            const free = freeCasts(char, d, L, sp).find((f) => f.left === null || f.left > 0)
-                            if (free) {
-                              if (free.useKey) update((c) => void (c.featureUses[free.useKey!] = (c.featureUses[free.useKey!] ?? 0) + 1))
-                              notify(t('spells.castFree', { name: sp.name, via: free.label }), 'good')
-                            } else if (useSlot(sp.level)) notify(t('spells.cast', { name: sp.name }), 'good')
-                            else notify(t('spells.noSlotLeft'), 'bad')
+                            const canCast = sp.level === 0 || sp.ritual || freeCasts(char, d, L, sp).some((f) => f.left === null || f.left > 0) || d.slots.some((x) => x.level >= sp.level && x.used < x.max) || (!!d.pact && d.pact.level >= sp.level && d.pact.used < d.pact.count)
+                            if (!canCast) notify(t('spells.noSlotLeft'), 'bad')
+                            setCasting({ sp, source: s.source })
                           }}
                         >
                           <Wand2 size={13} /> {t('spells.castBtn')}
@@ -297,6 +282,7 @@ export function SpellsTab() {
           }
         />
       )}
+      <CastDialog spell={casting?.sp ?? null} source={casting?.source} onClose={() => setCasting(null)} />
       <EntityPicker
         open={anyPicker}
         onClose={() => setAnyPicker(false)}
@@ -340,4 +326,31 @@ function sourceLabel(s: string): string {
   if (s === 'species') return 'Species'
   if (s === 'manual') return 'Manual'
   return s
+}
+
+/** Magical Cunning (Warlock 2024): 1 minutts ritual – få tilbake halvparten av Pact slots (rundet opp), 1 gang per Long Rest */
+function MagicalCunning() {
+  const { t } = useTranslation()
+  const { derived: d, update } = useChar()
+  const notify = useUi((s) => s.notify)
+  const f = d.features.find((x) => /^magical cunning$/i.test(x.name))
+  if (!f || !d.pact) return null
+  const left = f.uses ? f.uses.max - f.uses.used : 1
+  const regain = magicalCunningRegain(d.pact.count, d.pact.used)
+  return (
+    <button
+      className="btn btn-sm w-full justify-center"
+      disabled={left <= 0 || regain <= 0}
+      title={left <= 0 ? t('spellsx.cunningUsed') : t('spellsx.cunningTip')}
+      onClick={() => {
+        update((c) => {
+          c.pactSlotsUsed = Math.max(0, c.pactSlotsUsed - regain)
+          c.featureUses[f.key] = (c.featureUses[f.key] ?? 0) + 1
+        })
+        notify(t('spellsx.cunningDone', { n: regain }), 'good')
+      }}
+    >
+      <Moon size={13} /> {f.name} (+{regain}){left <= 0 ? ` – ${t('spellsx.cunningUsed')}` : ''}
+    </button>
+  )
 }

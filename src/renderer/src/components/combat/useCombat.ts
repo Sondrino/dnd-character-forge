@@ -3,19 +3,35 @@ import type { DerivedAttack, DerivedFeature, Derived } from '../../engine/comput
 import type { Lookup } from '../../engine/lookup'
 import { useChar, type CharCtxValue } from '../sheet/context'
 import { syncCompanionsFromCombat } from '../../lib/companions'
-import { AT_WILL_INVOCATIONS, attacksPerAction, castingKind, featureGrantedSpells } from '../../lib/combat'
+import { AT_WILL_INVOCATIONS, attacksPerAction, castingKind, featureGrantedSpells, settleVirtualCombat, virtualCombat } from '../../lib/combat'
 import { itemCombatOptions, type ItemOptionData } from '../../lib/items'
+import { useSettings } from '../../store/settings'
 
 export interface CombatCtx extends CharCtxValue {
   c: CombatState
   physical: boolean
   /** Endre kamptilstanden (og ev. karakteren) i én operasjon */
   mut: (recipe: (c: CombatState, ch: Character) => void) => void
+  /** Ingen kamp pågår: c er en midlertidig tilstand rundt karakterens egne effekter (casting fra arket) */
+  outOfCombat?: boolean
 }
 
 export function useCombat(): CombatCtx {
   const ctx = useChar()
-  const c = ctx.char.combat!
+  const dice = useSettings((s) => s.combatDice) ?? 'app'
+  if (!ctx.char.combat) {
+    // Utenfor kamp: effekter/concentration lagres på karakteren (Character.effects / .concentration)
+    const c = virtualCombat(ctx.char, dice)
+    const mut = (recipe: (c: CombatState, ch: Character) => void): void =>
+      ctx.update((ch) => {
+        if (ch.combat) return recipe(ch.combat, ch)
+        const vc = virtualCombat(ch, dice)
+        recipe(vc, ch)
+        settleVirtualCombat(vc, ch)
+      })
+    return { ...ctx, c, physical: dice === 'physical', mut, outOfCombat: true }
+  }
+  const c = ctx.char.combat
   const mut = (recipe: (c: CombatState, ch: Character) => void): void =>
     ctx.update((ch) => {
       if (ch.combat) recipe(ch.combat, ch)
@@ -102,7 +118,7 @@ export function combatOptions(char: Character, d: Derived, L: Lookup): OptionGro
     const a = f.activation
     const opt: CombatOption = { kind: 'feature', key: `ft:${f.key}`, feature: f }
     if (a === 'action' || a === 'bonus' || a === 'reaction') g[a].push(opt)
-    else if (f.uses || f.roll || f.toggle) g.other.push(opt)
+    else if (f.uses || f.roll || f.toggle || f.concentration) g.other.push(opt)
   }
   // Forbruksvarer: potions (Bonus Action i 2024) og scrolls
   for (const o of itemCombatOptions(char, L)) g[o.economy].push(o)

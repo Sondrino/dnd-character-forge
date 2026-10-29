@@ -3,7 +3,7 @@ import type { Derived } from './compute'
 import type { Lookup } from './lookup'
 import { abilityNames, skillById } from '../data/skills'
 import type { SkillId } from '../types'
-import { featPrereqProblems, featsAboveLevel, meetsMulticlass } from '../lib/rules'
+import { chosenOptionIds, featPrereqProblems, featsAboveLevel, meetsMulticlass, optionPrereqProblems } from '../lib/rules'
 
 export interface Tip {
   id: string
@@ -70,6 +70,25 @@ export function computeTips(char: Character, d: Derived, L0: Lookup, lang: 'nb' 
     const def = L.get('feat', cf.featId)
     const miss = def ? featPrereqProblems(def, d) : []
     if (miss.length) tips.push({ id: `featprereq:${cf.uid}`, level: 'warning', area: 'feats', title: t(`Forutsetning mangler: ${def!.name}`, `Prerequisite not met: ${def!.name}`), text: t(`Krever ${miss.join(', ')}.`, `Requires ${miss.join(', ')}.`), links: [{ kind: 'feat', id: def!.id, name: def!.name }] })
+  }
+  // Eldritch Invocations o.l.: forutsetninger som ikke lenger er oppfylt (Pact of the Blade, skade-cantrip, level …)
+  {
+    const chosen = chosenOptionIds(char, L)
+    const seen = new Set<string>()
+    for (const g of L.classOptions)
+      for (const it of g.items) {
+        if (!chosen.has(it.id) || seen.has(it.id) || !it.prerequisite) continue
+        seen.add(it.id)
+        const miss = optionPrereqProblems(it, g.classId, char, L, chosen)
+        if (miss.length)
+          tips.push({ id: `optprereq:${it.id}`, level: 'warning', area: 'class', title: t(`Forutsetning mangler: ${it.name}`, `Prerequisite not met: ${it.name}`), text: t(`${g.group}: krever ${miss.join(', ')}. Bytt den ut under Features & valg (eller behold den hvis DM-en tillater det).`, `${g.group}: requires ${miss.join(', ')}. Replace it under Features & choices (or keep it if your DM allows).`) })
+      }
+  }
+  // Språk ved opprettelse (2024): Common + to Standard languages; Rare krever DM-ens godkjenning
+  {
+    const rare = (char.choices?.['origin:languages#language'] ?? []).map((id) => L.get('language', id)).filter((l) => l?.rarity === 'rare')
+    if (rare.length)
+      tips.push({ id: 'rarelang', level: 'warning', area: 'background', title: t(`Sjeldent språk: ${rare.map((l) => l!.name).join(', ')}`, `Rare language: ${rare.map((l) => l!.name).join(', ')}`), text: t('Ved opprettelse velger du Common + to Standard languages (2024). Rare languages krever vanligvis en feature – eller at DM-en tillater det.', 'At character creation you know Common plus two Standard languages (2024). Rare languages normally need a feature – or your DM’s permission.'), links: rare.map((l) => ({ kind: 'language', id: l!.id, name: l!.name })) })
   }
   for (const sc of d.spellcasting) {
     if (sc.preparedCount > sc.preparedMax && sc.preparedMax > 0)
