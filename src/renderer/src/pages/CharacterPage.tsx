@@ -2,12 +2,12 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ArrowUp, ArrowDown, Coffee, Download, FileText, Lightbulb, Moon, Wand2, Check, SlidersHorizontal, Swords, Undo2, Redo2 } from 'lucide-react'
+import { ArrowLeft, ArrowUp, ArrowDown, Archive, Coffee, Download, FileText, Lightbulb, Moon, MoreHorizontal, Wand2, Check, SlidersHorizontal, Swords, Undo2, Redo2 } from 'lucide-react'
 import { useCharacter, useUi } from '../store/ui'
 import { useCharacters } from '../store/characters'
 import { useSettings } from '../store/settings'
 import { CharCtx } from '../components/sheet/context'
-import { Modal, Tabs } from '../components/ui'
+import { MenuButton, Modal, Tabs } from '../components/ui'
 import { SheetTab } from '../components/sheet/SheetTab'
 import { SpellsTab } from '../components/sheet/SpellsTab'
 import { InventoryTab } from '../components/sheet/InventoryTab'
@@ -88,7 +88,7 @@ export default function CharacterPage() {
       <div className="px-6 pb-24 pt-5">
         {/* Header */}
         <motion.header initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex flex-wrap items-center gap-4">
-          <button className="btn btn-ghost" onClick={() => nav('/')}>
+          <button className="btn btn-ghost" onClick={() => nav('/')} title={t('common.back')} aria-label={t('common.back')}>
             <ArrowLeft size={16} />
           </button>
           <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-gold/40 bg-panel-2">
@@ -156,21 +156,32 @@ export default function CharacterPage() {
             <button className={`btn ${tab === 'adjust' ? 'border-arcane text-arcane' : ''}`} onClick={() => setTab('adjust')} title={t('char.adjustTip')}>
               <SlidersHorizontal size={15} /> {t('char.adjust')}
             </button>
-            <button className="btn" onClick={() => setPdf(true)}>
-              <FileText size={15} /> PDF
-            </button>
-            <button className="btn" onClick={() => api.exportCharacter(char)} title={t('home.export')}>
-              <Download size={15} />
-            </button>
-            <button className="btn" onClick={() => setLevelDown(true)} disabled={derived.totalLevel <= 1} title={t('char.levelDown')}>
-              <ArrowDown size={15} />
-            </button>
-            <motion.button whileHover={{ scale: 1.03 }} className="btn btn-primary" onClick={() => setLevelUp(true)} disabled={derived.totalLevel >= 20 || !char.classes.length}>
+            <motion.button whileHover={{ scale: 1.03 }} className="btn btn-primary" onClick={() => setLevelUp(true)} disabled={derived.totalLevel >= 20 || !char.classes.length} title={t('char.levelUp')}>
               <ArrowUp size={15} /> {t('char.levelUp')}
             </motion.button>
-            <button className={`btn ${showTips ? 'border-gold text-gold' : ''}`} onClick={() => setShowTips(!showTips)}>
+            <button
+              className={`btn ${showTips ? 'border-gold text-gold' : ''}`}
+              onClick={() => setShowTips(!showTips)}
+              title={showTips ? t('polish.header.hideTips') : t('polish.header.showTips')}
+              aria-label={showTips ? t('polish.header.hideTips') : t('polish.header.showTips')}
+              aria-pressed={showTips}
+            >
               <Lightbulb size={15} />
             </button>
+            <MenuButton
+              label={t('polish.header.more')}
+              icon={<MoreHorizontal size={15} />}
+              items={[
+                { label: t('pdf.title'), icon: <FileText size={14} />, onClick: () => setPdf(true) },
+                { label: t('polish.header.exportFile'), icon: <Download size={14} />, onClick: () => api.exportCharacter(char) },
+                { label: t('char.levelDown'), icon: <ArrowDown size={14} />, onClick: () => setLevelDown(true), disabled: derived.totalLevel <= 1 },
+                {
+                  label: char.archived ? t('polish.home.unarchive') : t('polish.home.archive'),
+                  icon: <Archive size={14} />,
+                  onClick: () => update((c) => void (c.archived = !c.archived ? true : undefined))
+                }
+              ]}
+            />
           </div>
         </motion.header>
 
@@ -399,8 +410,8 @@ function RestModal({ kind, onClose }: { kind: 'short' | 'long' | null; onClose: 
                   {kind === 'short' && f.uses?.recharge === 'shortOne' ? ' (+1)' : ''}
                 </span>
               ))}
-              {kind === 'long' && d.slots.some((s) => s.used) && <span className="chip">Spell Slots</span>}
-              {d.pact?.used ? <span className="chip">Pact Slots</span> : null}
+              {kind === 'long' && d.slots.some((s) => s.used) && <span className="chip">{t('spells.slots')}</span>}
+              {d.pact?.used ? <span className="chip">{t('polish.labels.pactSlots')}</span> : null}
             </div>
           </div>
         )}

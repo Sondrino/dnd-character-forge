@@ -407,7 +407,7 @@ function OptionCard({ o, onPick }: { o: CombatOption; onPick: (o: CombatOption) 
   } else if (o.kind === 'spell') {
     const sp: SpellDef = o.spell
     name = sp.name
-    sub = [sp.level === 0 ? 'Cantrip' : `Level ${sp.level}`, sp.range, sp.damage ? `${sp.damage.dice} ${sp.damage.type}` : sp.heal ? `${t('combat.healing')} ${sp.heal}` : '', sp.concentration ? 'C' : ''].filter(Boolean).join(' · ')
+    sub = [sp.level === 0 ? t('polish.labels.cantrip') : t('polish.labels.spellLevel', { n: sp.level }), sp.range, sp.damage ? `${sp.damage.dice} ${sp.damage.type}` : sp.heal ? `${t('combat.healing')} ${sp.heal}` : '', sp.concentration ? 'C' : ''].filter(Boolean).join(' · ')
     const free = freeCasts(char, d, L, sp).filter((f) => f.left === null || f.left > 0)
     const canCast = sp.level === 0 || free.length > 0 || d.slots.some((s) => s.level >= sp.level && s.used < s.max) || (!!d.pact && d.pact.level >= sp.level && d.pact.used < d.pact.count)
     if (free.length) badge = <span className="chip border-good/60 text-[10px] text-good" title={free.map((f) => f.label).join(', ')}>{t('combat.freeBadge')}</span>

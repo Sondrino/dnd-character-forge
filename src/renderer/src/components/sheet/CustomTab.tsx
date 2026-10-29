@@ -9,7 +9,7 @@ import { EntityLink } from '../EntityInfo'
 import { uid } from '../../store/characters'
 import { useHomebrew } from '../../store/settings'
 import { EntityPicker } from '../EntityPicker'
-import { useUi } from '../../store/ui'
+import { removeWithUndo, useUi } from '../../store/ui'
 import { SpecialAbilityEditor } from './SpecialAbilityEditor'
 import { UsesTracker } from './SheetTab'
 
@@ -89,12 +89,18 @@ export function CustomTab() {
                     </button>
                     <button
                       className="btn btn-ghost btn-sm text-faint hover:text-bad"
+                      title={t('common.delete')}
+                      aria-label={t('common.delete')}
                       onClick={() =>
-                        update((c) => {
-                          c.customFeatures = c.customFeatures.filter((x) => x.id !== f.id)
-                          delete c.featureUses[`custom:${f.id}`]
-                          if (f.toggle) c.activeStates = c.activeStates.filter((s) => s !== f.toggle)
-                        })
+                        removeWithUndo(
+                          char.id,
+                          (c) => {
+                            c.customFeatures = c.customFeatures.filter((x) => x.id !== f.id)
+                            delete c.featureUses[`custom:${f.id}`]
+                            if (f.toggle) c.activeStates = c.activeStates.filter((s) => s !== f.toggle)
+                          },
+                          t('polish.deleted', { name: f.name })
+                        )
                       }
                     >
                       <Trash2 size={12} />
@@ -146,10 +152,15 @@ export function CustomTab() {
                       >
                         <Library size={12} />
                       </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setEditing(e)}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setEditing(e)} title={t('hb.editShort')} aria-label={t('hb.editShort')}>
                         <Pencil size={12} />
                       </button>
-                      <button className="btn btn-ghost btn-sm text-faint hover:text-bad" onClick={() => update((c) => void (c.customEntities = c.customEntities.filter((x) => !(x.id === e.id && x.kind === e.kind))))}>
+                      <button
+                        className="btn btn-ghost btn-sm text-faint hover:text-bad"
+                        title={t('common.delete')}
+                        aria-label={t('common.delete')}
+                        onClick={() => removeWithUndo(char.id, (c) => void (c.customEntities = c.customEntities.filter((x) => !(x.id === e.id && x.kind === e.kind))), t('polish.deleted', { name: e.name }))}
+                      >
                         <Trash2 size={12} />
                       </button>
                     </div>
@@ -169,7 +180,12 @@ export function CustomTab() {
                 <div className="mb-2 flex items-center gap-2">
                   <Toggle checked={ce.active} onChange={(v) => update((c) => void (c.customEffects[i].active = v))} />
                   <input className="input py-1" value={ce.label} onChange={(e) => update((c) => void (c.customEffects[i].label = e.target.value))} />
-                  <button className="btn btn-ghost btn-sm text-faint hover:text-bad" onClick={() => update((c) => void c.customEffects.splice(i, 1))}>
+                  <button
+                    className="btn btn-ghost btn-sm text-faint hover:text-bad"
+                    title={t('common.delete')}
+                    aria-label={t('common.delete')}
+                    onClick={() => removeWithUndo(char.id, (c) => void (c.customEffects = c.customEffects.filter((x) => x.uid !== ce.uid)), t('polish.deleted', { name: ce.label }))}
+                  >
                     <Trash2 size={12} />
                   </button>
                 </div>

@@ -1,6 +1,7 @@
 import type { nb } from './nb'
 import { combatEn } from './combat'
 import { abilityEn } from './ability'
+import { polishEn } from './polish'
 
 export const en: typeof nb = {
   nav: { characters: 'Characters', compendium: 'Compendium', homebrew: 'Homebrew', settings: 'Settings', dice: 'Dice' },
@@ -13,10 +14,10 @@ export const en: typeof nb = {
     tagline: 'Build, level and play D&D characters with the 2024 rules – all the rules data, dice and tips in one place.',
     new: 'New character', newHint: 'Step-by-step builder', import: 'Import', export: 'Export', imported: '{{n}} character(s) imported',
     empty: 'No characters yet – create your first hero!', build: 'Builder', duplicate: 'Duplicate', todo: '{{n}} to do',
-    deleteTitle: 'Delete character?', deleteText: 'Are you sure you want to delete {{name}}? This cannot be undone.'
+    deleteTitle: 'Delete character?', deleteText: 'Are you sure you want to delete {{name}}? It stays in “Recently deleted” for 30 days and can be restored there.'
   },
-  tabs: { adjust: 'Custom values', sheet: 'Sheet', spells: 'Spells', inventory: 'Inventory', features: 'Features & choices', details: 'Details', custom: 'Custom' },
-  char: { undone: 'Undone', redone: 'Redone', undoTip: 'Undo (Ctrl+Z)', redoTip: 'Redo (Ctrl+Y)', builderTip: 'Change class, species, background, ability scores, equipment and more', adjust: 'Custom values', adjustTip: 'Adjust or override any value for a custom game', levelDown: 'Level down', notFound: 'Character not found.', builder: 'Edit', levelUp: 'Level up' },
+  tabs: { adjust: 'Override values', sheet: 'Sheet', spells: 'Spells', inventory: 'Inventory', features: 'Features & choices', details: 'Details', custom: 'Homebrew & abilities' },
+  char: { undone: 'Undone', redone: 'Redone', undoTip: 'Undo (Ctrl+Z)', redoTip: 'Redo (Ctrl+Y)', builderTip: 'Change class, species, background, ability scores, equipment and more', adjust: 'Override values', adjustTip: 'Adjust or override any value for a custom game', levelDown: 'Level down', notFound: 'Character not found.', builder: 'Edit', levelUp: 'Level up' },
   info: { thirdPartyNote: 'Third-party content from {{book}}, used under the {{license}} license. It is not official D&D content – ask your DM whether it is allowed. See “Open Content Licenses” in the Compendium.', supplementNote: 'Official supplement: {{book}}. This is only a short summary in our own words – the full text is in the book or on D&D Beyond.',
     aka: 'In the Player’s Handbook: {{names}}', more: 'More info', openDdb: 'Open on D&D Beyond', phbNote: 'This is a short summary in our own words. Read the full rules text in the {{book}} or on D&D Beyond.',
     addInventory: 'Add to inventory', owned: 'Own {{n}}', addSpell: 'Add spell', known: 'Known', addFeat: 'Add feat', hasFeat: 'Already have',
@@ -135,7 +136,7 @@ export const en: typeof nb = {
     summaryHint: 'Shown in the small popup', editText: 'Edit', preview: 'Preview', effects: 'Effects (update the sheet automatically)',
     effectsHint: 'E.g. AC +1, Speed +10, advantage on Stealth, fire resistance…', addEffect: 'Add effect', condition: 'Condition (optional)',
     noEffects: 'No effects', intro: 'A shared library of your own subclasses, species, backgrounds, feats, spells, items, monsters and more – usable by all your characters and easy to share.',
-    empty: 'The library is empty', emptyText: 'Create homebrew here, or save from a character’s Custom tab.', effectCount: '{{n}} effect(s)',
+    empty: 'The library is empty', emptyText: 'Create homebrew here, or save from a character’s Homebrew & abilities tab.', effectCount: '{{n}} effect(s)',
     imported: '{{n}} imported', importFail: 'Could not read the file',
     featuresHint: 'Click a feature to edit it: level, uses, effects and what it does in combat.', addFeature: 'Add feature', editFeature: 'Edit feature', noFeatures: 'No features yet.',
     subclassHint: '{{cls}} chooses a subclass at level {{lvl}}. Features show on the sheet from the level you set and can be used in combat mode.',
@@ -213,11 +214,12 @@ export const en: typeof nb = {
     }
   },
   adjust: {
-    title: 'Custom values (custom game)', intro: 'Add an adjustment (e.g. +2 STR) on top of the automatic calculation – everything else still updates automatically. “Fixed” replaces the calculation entirely.',
+    title: 'Override values (custom game)', intro: 'Add an adjustment (e.g. +2 STR) on top of the automatic calculation – everything else still updates automatically. “Fixed” replaces the calculation entirely.',
     baseScores: 'Change base scores', resetAll: 'Reset all', abilities: 'Ability scores', saves: 'Saving throws', skills: 'Skills', combat: 'Combat & other',
     masteryCount: 'Weapon Mastery count', spellcasting: 'Spellcasting', slots: 'Spell slots level {{n}}', attacks: 'Attacks', attackBonus: 'attack bonus', damageBonus: 'damage bonus',
     auto: 'Auto', adjustment: 'Adjustment', fixed: 'Fixed', result: 'Result'
   },
   combat: combatEn,
-  ability: abilityEn
+  ability: abilityEn,
+  polish: polishEn
 }

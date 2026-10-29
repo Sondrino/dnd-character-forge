@@ -13,7 +13,7 @@ import { dndBeyondUrl } from '../data'
 import { useSettings } from '../store/settings'
 import { api } from '../lib/api'
 import { abilityNames, skillById } from '../data/skills'
-import { uid } from '../store/characters'
+import { uid, useCharacters } from '../store/characters'
 import type { Lookup } from '../engine/lookup'
 
 export const KIND_LABEL: Record<string, string> = {
@@ -346,7 +346,7 @@ export function DetailDrawer() {
                       <ExternalLink size={13} /> {t('info.openDdb')}
                     </button>
                   )}
-                  <button className="btn btn-ghost btn-sm" onClick={close}>
+                  <button className="btn btn-ghost btn-sm" onClick={close} title={t('polish.modal.close')} aria-label={t('polish.modal.close')}>
                     <X size={16} />
                   </button>
                 </div>
@@ -564,16 +564,27 @@ export function FeatureList({ features, title }: { features: { id: string; name:
 /* «Legg til i karakter» fra detaljvisningen                           */
 /* ------------------------------------------------------------------ */
 
+/** Sist valgte karakter i Oppslag (huskes mens appen er åpen) */
+let lastPickedCharacter: string | undefined
+
 function AddToCharacter({ entity: e }: { entity: AnyEntity }) {
   const { t } = useTranslation()
   const activeId = useUi((s) => s.activeCharacterId)
   const notify = useUi((s) => s.notify)
-  const { char, update, derived } = useCharacter(activeId ?? undefined)
+  const all = useCharacters((s) => s.characters)
+  // Åpen karakter først; ellers kan du velge blant alle (arkiverte bare hvis det ikke finnes andre)
+  const choices = Object.values(all)
+    .filter((c) => !c.archived || c.id === activeId)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  const [picked, setPicked] = useState<string | undefined>(undefined)
+  const targetId = activeId ?? (picked && all[picked] ? picked : lastPickedCharacter && all[lastPickedCharacter] ? lastPickedCharacter : choices[0]?.id)
+  const { char, update, derived } = useCharacter(targetId)
   if (!char) return null
   const isItem = ['weapon', 'armor', 'gear', 'tool', 'magicItem'].includes(e.kind)
   const isSpell = e.kind === 'spell'
   const isFeat = e.kind === 'feat'
   if (!isItem && !isSpell && !isFeat) return null
+  const label = (c: { name: string }): string => c.name || t('common.unnamed')
   const hasSpell = isSpell && char.spells.some((s) => s.spellId === e.id)
   const hasFeat = isFeat && char.feats.some((f) => f.featId === e.id)
   const qty = isItem ? char.inventory.filter((i) => i.refId === e.id).reduce((s, i) => s + i.qty, 0) : 0
@@ -581,7 +592,27 @@ function AddToCharacter({ entity: e }: { entity: AnyEntity }) {
   const caster = isSpell ? derived?.spellcasting.find((c) => sp.classes.includes(c.spellList)) ?? derived?.spellcasting[0] : undefined
   return (
     <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-gold/30 bg-gold/5 p-3 text-sm">
-      <span className="text-muted">{char.name || t('common.unnamed')}:</span>
+      {activeId || choices.length < 2 ? (
+        <span className="text-muted">{label(char)}:</span>
+      ) : (
+        <label className="flex items-center gap-1.5 text-muted">
+          {t('polish.add.to')}
+          <select
+            className="input w-auto max-w-[200px] py-0.5 text-sm"
+            value={char.id}
+            onChange={(ev) => {
+              lastPickedCharacter = ev.target.value
+              setPicked(ev.target.value)
+            }}
+          >
+            {choices.map((c) => (
+              <option key={c.id} value={c.id}>
+                {label(c)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {isItem && (
         <button
           className="btn btn-primary btn-sm"
@@ -591,7 +622,7 @@ function AddToCharacter({ entity: e }: { entity: AnyEntity }) {
               if (ex) ex.qty += 1
               else d.inventory.push({ uid: uid(), refId: e.id, qty: 1, equipped: false, attuned: false })
             })
-            notify(t('info.addedItem', { name: e.name }), 'good')
+            notify(t('info.addedItem', { name: e.name }) + (activeId ? '' : ` → ${label(char)}`), 'good')
           }}
         >
           <Plus size={13} /> {t('info.addInventory')}
@@ -610,7 +641,7 @@ function AddToCharacter({ entity: e }: { entity: AnyEntity }) {
               update((d) => {
                 d.spells.push({ spellId: e.id, source: caster?.classId ?? 'manual', prepared: sp.level > 0 })
               })
-              notify(t('info.addedSpell', { name: e.name }), 'good')
+              notify(t('info.addedSpell', { name: e.name }) + (activeId ? '' : ` → ${label(char)}`), 'good')
             }}
           >
             <Plus size={13} /> {t('info.addSpell')}
@@ -629,7 +660,7 @@ function AddToCharacter({ entity: e }: { entity: AnyEntity }) {
               update((d) => {
                 d.feats.push({ uid: uid(), featId: e.id, source: 'manual' })
               })
-              notify(t('info.addedFeat', { name: e.name }), 'good')
+              notify(t('info.addedFeat', { name: e.name }) + (activeId ? '' : ` → ${label(char)}`), 'good')
             }}
           >
             <Plus size={13} /> {t('info.addFeat')}

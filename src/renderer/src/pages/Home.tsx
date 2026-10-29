@@ -2,11 +2,12 @@ import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Copy, Download, FileText, Heart, Plus, Shield, Trash2, Upload, Wand2, Sparkles, RotateCcw } from 'lucide-react'
+import { Archive, ArchiveRestore, Copy, Download, FileText, Heart, Plus, Search, Shield, Trash2, Upload, Wand2, Sparkles, RotateCcw } from 'lucide-react'
 import { newCharacter, useCharacters } from '../store/characters'
 import { useLookup, useUi } from '../store/ui'
 import { computeCharacter } from '../engine/compute'
-import { Modal } from '../components/ui'
+import { Modal, Toggle } from '../components/ui'
+import { filterCharacters } from '../lib/polish'
 import { api } from '../lib/api'
 import type { Character } from '../types'
 import { SortSelect, useSortChoice } from '../components/SortSelect'
@@ -21,8 +22,14 @@ export default function Home() {
   const importFiles = useCharacters((s) => s.importFiles)
   const notify = useUi((s) => s.notify)
   const [sortId, setSortId] = useSortChoice('home', 'recent')
+  const L = useLookup()
+  const [query, setQuery] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
   const level = (c: (typeof characters)[string]): number => c.classes.reduce((s, x) => s + x.level, 0)
-  const list = Object.values(characters).sort((a, b) =>
+  const all = Object.values(characters)
+  const archivedCount = all.filter((c) => c.archived).length
+  const describe = (c: Character): string => [L.get('species', c.speciesId)?.name, ...c.classes.map((x) => L.get('class', x.classId)?.name)].filter(Boolean).join(' ')
+  const list = filterCharacters(all, query, showArchived, describe).sort((a, b) =>
     sortId === 'name'
       ? (a.name || '~').localeCompare(b.name || '~', 'nb', { numeric: true, sensitivity: 'base' })
       : sortId === 'charLevel'
@@ -75,8 +82,19 @@ export default function Home() {
         </div>
       </header>
 
-      {list.length > 1 && (
-        <div className="mb-3 flex justify-end">
+      {(all.length > 1 || archivedCount > 0) && (
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+          <div className="relative mr-auto">
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+            <input
+              className="input w-64 pl-9"
+              placeholder={t('polish.home.search')}
+              aria-label={t('polish.home.search')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          {archivedCount > 0 && <Toggle checked={showArchived} onChange={setShowArchived} label={<span className="text-sm text-muted">{t('polish.home.showArchived', { n: archivedCount })}</span>} />}
           <SortSelect
             className="w-56"
             value={sortId}
@@ -108,8 +126,11 @@ export default function Home() {
           <CharacterCard key={c.id} c={c} index={i} />
         ))}
       </div>
-      <TrashSection count={list.length} />
-      {loaded && list.length === 0 && (
+      {loaded && all.length > 0 && list.length === 0 && (
+        <p className="mt-6 text-center text-sm text-muted">{query.trim() ? t('common.noResults') : t('polish.home.allArchived', { n: archivedCount })}</p>
+      )}
+      <TrashSection count={all.length} />
+      {loaded && all.length === 0 && (
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-10 text-center font-serif text-lg text-muted">
           <Sparkles className="mr-2 inline text-gold" size={18} />
           {t('home.empty')}
@@ -125,6 +146,7 @@ function CharacterCard({ c, index }: { c: Character; index: number }) {
   const L = useLookup()
   const dup = useCharacters((s) => s.duplicate)
   const remove = useCharacters((s) => s.remove)
+  const updateChar = useCharacters((s) => s.update)
   const [confirm, setConfirm] = useState(false)
   const d = useMemo(() => computeCharacter(c, L), [c, L])
   const species = L.get('species', c.speciesId)
@@ -136,9 +158,14 @@ function CharacterCard({ c, index }: { c: Character; index: number }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05 }}
-        className="panel card-hover group relative flex cursor-pointer flex-col overflow-hidden"
+        className={`panel card-hover group relative flex cursor-pointer flex-col overflow-hidden ${c.archived ? 'opacity-60 grayscale-[40%]' : ''}`}
         onClick={() => nav(`/character/${c.id}`)}
       >
+        {c.archived && (
+          <span className="chip absolute right-2 top-2 z-10 border-line bg-panel/80 text-[10px]">
+            <Archive size={11} /> {t('polish.home.archived')}
+          </span>
+        )}
         <div className="relative h-28 overflow-hidden bg-gradient-to-br from-panel-3 to-bg-2">
           {c.portrait ? (
             <img src={c.portrait} className="h-full w-full object-cover opacity-80 transition-transform duration-500 group-hover:scale-105" />
@@ -191,8 +218,16 @@ function CharacterCard({ c, index }: { c: Character; index: number }) {
             <button className="btn btn-ghost btn-sm" title={t('home.export')} onClick={() => api.exportCharacter(c)}>
               <Download size={14} />
             </button>
-            <button className="btn btn-ghost btn-sm" title="PDF" onClick={() => api.exportPdf({ id: c.id, name: c.name, parts: ['sheet', 'spells', 'features', 'inventory', 'spellcards', 'details', 'legal'] })}>
+            <button className="btn btn-ghost btn-sm" title={t('pdf.title')} onClick={() => api.exportPdf({ id: c.id, name: c.name, parts: ['sheet', 'spells', 'features', 'inventory', 'spellcards', 'details', 'legal'] })}>
               <FileText size={14} />
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              title={c.archived ? t('polish.home.unarchive') : t('polish.home.archive')}
+              aria-label={c.archived ? t('polish.home.unarchive') : t('polish.home.archive')}
+              onClick={() => updateChar(c.id, (x) => void (x.archived = !x.archived ? true : undefined))}
+            >
+              {c.archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
             </button>
             <span className="ml-auto text-[10px] text-faint">{new Date(c.updatedAt).toLocaleDateString()}</span>
             <button className="btn btn-ghost btn-sm btn-danger" title={t('common.delete')} onClick={() => setConfirm(true)}>

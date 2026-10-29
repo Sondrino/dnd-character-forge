@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Brain, ChevronDown, ChevronUp, Copy, Heart, HeartCrack, Plus, Shield, Skull, Sparkles, Trash2, UserPlus, X } from 'lucide-react'
+import { BookOpen, Brain, ChevronDown, ChevronUp, Copy, Heart, HeartCrack, Plus, Shield, Skull, Sparkles, Trash2, Undo2, UserPlus, X } from 'lucide-react'
+import { useCharacters } from '../../store/characters'
+import { useUi } from '../../store/ui'
 import type { Ability, DamageType } from '../../types'
 import { ABILITIES } from '../../types'
 import { Modal, NumberInput, Section } from '../ui'
@@ -665,15 +667,30 @@ const LOG_COLOR: Record<string, string> = {
 
 export function LogPanel() {
   const { t } = useTranslation()
-  const { c } = useCombat()
+  const { c, char } = useCombat()
   const [open, setOpen] = useState(true)
+  useCharacters((s) => s.historySeq)
+  // Ikke angre forbi selve kampstarten (første logglinje)
+  const canUndo = c.log.length > 1 && useCharacters.getState().canUndo(char.id)
   return (
     <Section
       title={t('combat.log.title')}
       actions={
-        <button className="btn btn-ghost btn-sm px-1" onClick={() => setOpen(!open)}>
-          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
+        <>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={!canUndo}
+            title={t('polish.combat.undoLastTip')}
+            onClick={() => {
+              if (useCharacters.getState().undo(char.id)) useUi.getState().notify(t('char.undone'), 'info')
+            }}
+          >
+            <Undo2 size={13} /> {t('polish.combat.undoLast')}
+          </button>
+          <button className="btn btn-ghost btn-sm px-1" onClick={() => setOpen(!open)} title={open ? t('polish.combat.collapse') : t('polish.combat.expand')}>
+            {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </>
       }
     >
       <div className="mb-2 flex flex-wrap gap-2 text-[11px] text-muted">
