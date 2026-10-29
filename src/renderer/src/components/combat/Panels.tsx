@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Brain, ChevronDown, ChevronUp, Copy, Heart, HeartCrack, Plus, Shield, Skull, Sparkles, Trash2, UserPlus, X } from 'lucide-react'
+import { BookOpen, Brain, ChevronDown, ChevronUp, Copy, Dices, Heart, HeartCrack, Plus, Shield, Skull, Sparkles, Trash2, UserPlus, X } from 'lucide-react'
 import type { Ability, DamageType } from '../../types'
 import { ABILITIES } from '../../types'
 import { Modal, NumberInput, Section } from '../ui'
@@ -13,6 +13,10 @@ import { addEffect, addLog, applyDamage, deathSave, dropConcentration, endEffect
 import { useRolls } from '../../store/rolls'
 import { EntityPicker } from '../EntityPicker'
 import type { CreatureDef } from '../../types'
+import { useUi } from '../../store/ui'
+import { ConditionChips } from './ConditionChips'
+import { creatureCombatant, creatureInitMod, hpDice, toggleCombatantCondition } from '../../lib/monsters'
+import { toggleCharacterCondition } from '../../lib/party'
 
 const DAMAGE_TYPES: DamageType[] = ['acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder']
 const ABIL: Record<Ability, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
@@ -442,8 +446,10 @@ export function StatusPanel() {
 
 export function InitiativePanel({ onNext }: { onNext: () => void }) {
   const { t } = useTranslation()
-  const { char, derived: d, c, mut, physical } = useCombat()
+  const { char, derived: d, lookup: L, c, mut, physical } = useCombat()
   const roll = useRolls((s) => s.roll)
+  const openDetail = useUi((s) => s.openDetail)
+  const [rollHp, setRollHp] = useState(false)
   const order = initiativeOrder(c.combatants)
   const current = order[c.turnIdx]
   const [form, setForm] = useState<{ name: string; init: string; initMod: string; hp: string; ac: string; count: number; ally: boolean } | null>(null)
@@ -455,18 +461,13 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
     mut((cc) => {
       const curUid = initiativeOrder(cc.combatants)[cc.turnIdx]?.uid
       for (const cr of list) {
-        const dex = Math.floor(((cr.abilities?.dex ?? 10) - 10) / 2)
-        const hp = parseInt(String(cr.hp), 10)
-        const same = cc.combatants.filter((x) => x.name === cr.name || x.name.startsWith(`${cr.name} `)).length
-        cc.combatants.push({
-          uid: uidc(),
-          name: same ? `${cr.name} ${same + 1}` : cr.name,
-          init: roll(`1d20${signed(dex)}`, `${cr.name} initiative`).total,
-          hp: Number.isFinite(hp) ? hp : undefined,
-          maxHp: Number.isFinite(hp) ? hp : undefined,
-          ac: cr.ac,
-          note: `CR ${cr.cr}`
-        })
+        cc.combatants.push(
+          creatureCombatant(cr, {
+            existing: cc.combatants,
+            init: roll(`1d20${signed(creatureInitMod(cr))}`, `${cr.name} initiative`).total,
+            rollHp: rollHp ? (dice) => roll(dice, `${cr.name} HP`).total : undefined
+          })
+        )
       }
       const idx = initiativeOrder(cc.combatants).findIndex((x) => x.uid === curUid)
       if (idx >= 0) cc.turnIdx = idx
@@ -506,6 +507,9 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
       title={t('combat.initiative')}
       actions={
         <>
+          <button className={`btn btn-sm px-1.5 ${rollHp ? 'border-gold bg-gold/15 text-gold-2' : ''}`} onClick={() => setRollHp(!rollHp)} title={`${t('party.rollHp')}: ${t('party.rollHpTip')}`} aria-pressed={rollHp}>
+            <Dices size={13} />
+          </button>
           <button className="btn btn-sm" onClick={() => setBestiary(true)} title={t('combat.bestiaryTip')}>
             <BookOpen size={13} /> {t('combat.bestiary')}
           </button>
@@ -560,13 +564,34 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
               />
               <span className={`min-w-0 flex-1 truncate ${x.self ? 'font-semibold text-gold' : x.ally ? 'text-good' : ''}`}>
                 {isCur && '▶ '}
-                {x.self ? char.name || t('combat.you') : x.name}
+                {x.self ? (
+                  char.name || t('combat.you')
+                ) : x.creatureId ? (
+                  <button className="entity-link" title={t('party.statBlock')} onClick={() => openDetail({ kind: 'creature', id: x.creatureId! })}>
+                    {x.name}
+                  </button>
+                ) : (
+                  x.name
+                )}
                 {x.ac !== undefined && <span className="ml-1 text-[10px] text-muted">AC {x.ac}</span>}
               </span>
               {x.self ? (
-                <span className="text-xs text-muted">
-                  {char.hp.current}/{d.hpMax.value} HP
-                </span>
+                <>
+                  <span className="text-xs text-muted">
+                    {char.hp.current}/{d.hpMax.value} HP
+                  </span>
+                  <ConditionChips
+                    className="w-full"
+                    value={char.conditions}
+                    onToggle={(id) =>
+                      mut((cc, ch) => {
+                        const r = toggleCharacterCondition(ch, id)
+                        addLog(cc, 'info', `${r.on ? '+' : '−'} ${L.get('condition', id)?.name ?? id}`)
+                        if (r.concentrationLost) addLog(cc, 'info', t('combat.log.concLost', { name: r.concentrationLost }))
+                      })
+                    }
+                  />
+                </>
               ) : (
                 <>
                   {x.hp !== undefined && (
@@ -576,6 +601,35 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
                     </span>
                   )}
                   <div className="flex w-full items-center justify-end gap-1">
+                  <ConditionChips
+                    className="mr-auto"
+                    value={x.conditions ?? []}
+                    onToggle={(id) =>
+                      mut((cc) => {
+                        const y = cc.combatants.find((z) => z.uid === x.uid)!
+                        const on = toggleCombatantCondition(y, id)
+                        addLog(cc, 'info', `${y.name}: ${on ? '+' : '−'} ${L.get('condition', id)?.name ?? id}`)
+                      })
+                    }
+                  />
+                  {x.creatureId && hpDice((L.get('creature', x.creatureId) as CreatureDef | undefined)?.hp) && (
+                    <button
+                      className="btn btn-ghost btn-sm px-1"
+                      title={t('party.rerollHp', { dice: hpDice((L.get('creature', x.creatureId) as CreatureDef).hp) })}
+                      onClick={() => {
+                        const dice = hpDice((L.get('creature', x.creatureId!) as CreatureDef).hp)!
+                        const hp = Math.max(1, roll(dice, `${x.name} HP`).total)
+                        mut((cc) => {
+                          const y = cc.combatants.find((z) => z.uid === x.uid)!
+                          y.hp = y.maxHp = hp
+                          y.defeated = false
+                          addLog(cc, 'info', t('party.log.hpRolled', { name: y.name, n: hp }))
+                        })
+                      }}
+                    >
+                      <Dices size={12} />
+                    </button>
+                  )}
                   <input
                     className="input w-14 px-1 text-center text-xs"
                     placeholder="±HP"

@@ -499,6 +499,10 @@ export interface Combatant {
   conditions?: string[]
   defeated?: boolean
   note?: string
+  /** Gruppemodus: en ekte karakter (HP og conditions leses/skrives på karakteren) */
+  characterId?: string
+  /** Lagt til fra bestiariet: åpner stat blocken */
+  creatureId?: string
 }
 
 export interface CombatLogEntry {

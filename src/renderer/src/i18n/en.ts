@@ -1,6 +1,7 @@
 import type { nb } from './nb'
 import { combatEn } from './combat'
 import { abilityEn } from './ability'
+import { partyEn } from './party'
 
 export const en: typeof nb = {
   nav: { characters: 'Characters', compendium: 'Compendium', homebrew: 'Homebrew', settings: 'Settings', dice: 'Dice' },
@@ -218,6 +219,7 @@ export const en: typeof nb = {
     masteryCount: 'Weapon Mastery count', spellcasting: 'Spellcasting', slots: 'Spell slots level {{n}}', attacks: 'Attacks', attackBonus: 'attack bonus', damageBonus: 'damage bonus',
     auto: 'Auto', adjustment: 'Adjustment', fixed: 'Fixed', result: 'Result'
   },
+  party: partyEn,
   combat: combatEn,
   ability: abilityEn
 }

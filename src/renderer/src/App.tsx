@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect } from 'react'
 import { HashRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, FlaskConical, Globe, Settings as SettingsIcon, Swords, Dices } from 'lucide-react'
+import { BookOpen, FlaskConical, Globe, Settings as SettingsIcon, Swords, Dices, Users } from 'lucide-react'
 import { useCharacters } from './store/characters'
 import { useHomebrew, useSettings } from './store/settings'
 import { useUi } from './store/ui'
@@ -19,6 +19,7 @@ import HomebrewPage from './pages/Homebrew'
 import SettingsPage from './pages/Settings'
 import i18n from './i18n'
 import PrintPage from './pages/Print'
+import PartyPage from './pages/Party'
 
 export default function App() {
   const loadChars = useCharacters((s) => s.load)
@@ -87,6 +88,7 @@ function Shell() {
               <Route path="/character/:id" element={<CharacterPage />} />
               <Route path="/character/:id/build" element={<Builder />} />
               <Route path="/character/:id/combat" element={<CombatPage />} />
+              <Route path="/party" element={<PartyPage />} />
               <Route path="/compendium" element={<Compendium />} />
               <Route path="/compendium/:kind" element={<Compendium />} />
               <Route path="/homebrew" element={<HomebrewPage />} />
@@ -109,6 +111,7 @@ function Sidebar() {
   const setTray = useRolls((s) => s.setTray)
   const items = [
     { to: '/', icon: <Swords size={20} />, label: t('nav.characters'), end: true },
+    { to: '/party', icon: <Users size={20} />, label: t('party.nav') },
     { to: '/compendium', icon: <BookOpen size={20} />, label: t('nav.compendium') },
     { to: '/homebrew', icon: <FlaskConical size={20} />, label: t('nav.homebrew') },
     { to: '/settings', icon: <SettingsIcon size={20} />, label: t('nav.settings') }
