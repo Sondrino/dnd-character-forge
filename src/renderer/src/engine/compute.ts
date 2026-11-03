@@ -73,6 +73,8 @@ export interface DerivedSpellcasting {
   preparedMax: number
   cantripsMax: number
   preparedCount: number
+  /** Spells som alltid er prepared (subclass o.l.): kommer i tillegg til preparedMax */
+  alwaysPreparedCount: number
   cantripCount: number
   spellList: string
   maxSpellLevel: number
@@ -964,7 +966,8 @@ export function computeCharacter(char: Character, baseLookup: Lookup): Derived {
       // Ekstra cantrips (Thaumaturge, Magician): effect 'spell.cantrips.<classId>'
       cantripsMax: (sc.cantrips?.[ce.level - 1] ?? 0) + sumAdd([`spell.cantrips.${def.id}`], []),
       preparedCount: spellDefs.filter((x) => x.d && x.d.level > 0 && !x.s.alwaysPrepared && x.s.prepared).length,
-      cantripCount: spellDefs.filter((x) => x.d && x.d.level === 0).length,
+      alwaysPreparedCount: spellDefs.filter((x) => x.d && x.d.level > 0 && x.s.alwaysPrepared).length,
+      cantripCount: spellDefs.filter((x) => x.d && x.d.level === 0 && !x.s.alwaysPrepared).length,
       spellList: sc.spellList, maxSpellLevel: maxLvl
     })
   }
@@ -1255,7 +1258,7 @@ function bestCaster(list: DerivedSpellcasting[], mods: Record<Ability, number>, 
   const m = mods[ab]
   return {
     classId: '', className: '', ability: ab, mod: m, dc: stat(8 + pb + m), attack: stat(pb + m), preparedMax: 0, cantripsMax: 0,
-    preparedCount: 0, cantripCount: 0, spellList: '', maxSpellLevel: 0
+    preparedCount: 0, alwaysPreparedCount: 0, cantripCount: 0, spellList: '', maxSpellLevel: 0
   }
 }
 

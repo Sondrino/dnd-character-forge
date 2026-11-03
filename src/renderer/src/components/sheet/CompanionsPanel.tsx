@@ -1,13 +1,15 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PawPrint, Plus, Trash2, Eye, BookOpen } from 'lucide-react'
+import { PawPrint, Plus, Trash2, Eye, BookOpen, Sparkles } from 'lucide-react'
 import type { Companion, CreatureDef } from '../../types'
 import { useChar } from './context'
 import { NumberInput, Section } from '../ui'
 import { EntityPicker } from '../EntityPicker'
 import { useUi } from '../../store/ui'
-import { COMPANION_KINDS, companionFromCreature, customCompanion, damageCompanion, healCompanion, syncCombatFromCompanion } from '../../lib/companions'
+import { useHomebrew } from '../../store/settings'
+import { EntityEditor } from '../HomebrewEditor'
+import { COMPANION_KINDS, companionFromCreature, customCompanion, damageCompanion, defaultCompanionKind, healCompanion, syncCombatFromCompanion } from '../../lib/companions'
 
 /** Companions på arket: familiar, dyrevenn, steed, summon – med HP-sporing */
 export function CompanionsPanel() {
@@ -15,7 +17,17 @@ export function CompanionsPanel() {
   const { char, update } = useChar()
   const [picker, setPicker] = useState(false)
   const [form, setForm] = useState<{ name: string; hp: number; ac: number; kind: Companion['kind'] } | null>(null)
+  const [creating, setCreating] = useState(false)
+  const library = useHomebrew((s) => s.entities)
+  const saveToLibrary = useHomebrew((s) => s.upsert)
   const list = char.companions ?? []
+  // Egne skapninger: fra Homebrew-siden og de som bare ligger på denne karakteren
+  const homebrew = [...char.customEntities, ...library.filter((e) => !char.customEntities.some((x) => x.id === e.id))].filter((e): e is CreatureDef => e.kind === 'creature')
+  const addCreatures = (creatures: CreatureDef[]): void =>
+    update((c) => {
+      const kind = defaultCompanionKind(c)
+      c.companions = [...(c.companions ?? []), ...creatures.map((cr) => companionFromCreature(cr, kind))]
+    })
 
   /** Endre en companion (og en ev. koblet combatant i en pågående kamp) */
   const edit = (uid: string, fn: (cp: Companion) => void): void =>
@@ -70,6 +82,20 @@ export function CompanionsPanel() {
           </button>
         </div>
       )}
+      <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-xl border border-line-soft p-2 text-xs">
+        <span className="flex items-center gap-1 font-semibold text-muted">
+          <Sparkles size={12} /> {t('tools.companions.homebrew')}
+        </span>
+        {homebrew.map((cr) => (
+          <button key={cr.id} className="chip cursor-pointer hover:border-gold hover:text-ink" title={t('tools.companions.homebrewAdd', { name: cr.name })} onClick={() => addCreatures([cr])}>
+            <Plus size={10} /> {cr.name}
+          </button>
+        ))}
+        {homebrew.length === 0 && <span className="text-muted">{t('tools.companions.homebrewEmpty')}</span>}
+        <button className="btn btn-sm ml-auto" onClick={() => setCreating(true)}>
+          <Plus size={12} /> {t('tools.companions.homebrewNew')}
+        </button>
+      </div>
       {list.length === 0 && !form && <p className="text-sm text-muted">{t('tools.companions.empty')}</p>}
       <div className="space-y-2">
         {list.map((cp) => (
@@ -82,15 +108,22 @@ export function CompanionsPanel() {
         kinds={['creature']}
         title={t('tools.companions.pickTitle')}
         multi
-        groupBy={(e) => (e as CreatureDef).creatureType}
-        onConfirm={(_ids, ents) =>
-          update((c) => {
-            // Gjett type ut fra classen: Find Familiar (druid/wizard/warlock), Find Steed (paladin), ellers dyrevenn
-            const has = (...ids: string[]): boolean => c.classes.some((x) => ids.includes(x.classId))
-            const kind: Companion['kind'] = has('druid', 'wizard', 'warlock') ? 'familiar' : has('paladin') ? 'steed' : 'companion'
-            c.companions = [...(c.companions ?? []), ...(ents as CreatureDef[]).map((cr) => companionFromCreature(cr, kind))]
-          })
-        }
+        extra={char.customEntities}
+        firstGroup={t('tools.companions.homebrew')}
+        groupBy={(e) => (e.source === 'Homebrew' ? t('tools.companions.homebrew') : (e as CreatureDef).creatureType)}
+        onConfirm={(_ids, ents) => addCreatures(ents as CreatureDef[])}
+      />
+      <EntityEditor
+        open={creating}
+        onClose={() => setCreating(false)}
+        initial={null}
+        initialKind="creature"
+        existingIds={homebrew.map((e) => e.id)}
+        onSave={(e) => {
+          // Lagres i Homebrew-biblioteket, så den også kan brukes av andre karakterer og i bestiariet
+          saveToLibrary(e)
+          addCreatures([e as CreatureDef])
+        }}
       />
     </Section>
   )
@@ -111,6 +144,7 @@ function KindSelect({ value, onChange }: { value: Companion['kind']; onChange: (
 
 function CompanionRow({ cp, edit, remove }: { cp: Companion; edit: (fn: (cp: Companion) => void) => void; remove: () => void }) {
   const { t } = useTranslation()
+  const { lookup: L } = useChar()
   const openDetail = useUi((s) => s.openDetail)
   const [amt, setAmt] = useState('')
   const n = parseInt(amt, 10)
@@ -132,7 +166,7 @@ function CompanionRow({ cp, edit, remove }: { cp: Companion; edit: (fn: (cp: Com
         {cp.hp <= 0 && <span className="chip py-0 text-[10px] text-bad">{t('tools.companions.down')}</span>}
         <span className="ml-auto flex items-center gap-1">
           {cp.creatureId && (
-            <button className="btn btn-ghost btn-sm px-1" title={t('tools.companions.statBlock')} onClick={() => openDetail({ kind: 'creature', id: cp.creatureId! })}>
+            <button className="btn btn-ghost btn-sm px-1" title={t('tools.companions.statBlock')} onClick={() => openDetail({ kind: 'creature', id: cp.creatureId!, entity: L.get('creature', cp.creatureId!) })}>
               <Eye size={13} />
             </button>
           )}

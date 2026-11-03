@@ -12,7 +12,7 @@ import { SortSelect, useSortChoice } from './SortSelect'
 import { BookFilterBar, BookFilterReset, useBookFilter } from './BookFilter'
 
 export function EntityPicker({
-  open, onClose, kinds, title, filter, multi = false, max, selected = [], onConfirm, extra = [], groupBy
+  open, onClose, kinds, title, filter, multi = false, max, selected = [], onConfirm, extra = [], groupBy, firstGroup
 }: {
   open: boolean
   onClose: () => void
@@ -26,6 +26,8 @@ export function EntityPicker({
   /** Ekstra entities (f.eks. karakterens homebrew) */
   extra?: AnyEntity[]
   groupBy?: (e: AnyEntity) => string
+  /** Denne gruppen vises øverst */
+  firstGroup?: string
 }) {
   const { t } = useTranslation()
   const L0 = useLookup()
@@ -58,7 +60,7 @@ export function EntityPicker({
       matchesQuery(e, q) &&
       (level === null || (e as SpellDef).level === level)
   )
-  const groups = groupBy ? [...new Set(shown.map(groupBy))] : ['']
+  const groups = groupBy ? [...new Set(shown.map(groupBy))].sort((a, b) => Number(b === firstGroup) - Number(a === firstGroup)) : ['']
 
   const toggle = (id: string): void => {
     if (!multi) {

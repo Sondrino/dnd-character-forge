@@ -15,6 +15,7 @@ import { api } from '../lib/api'
 import { abilityNames, skillById } from '../data/skills'
 import { uid, useCharacters } from '../store/characters'
 import type { Lookup } from '../engine/lookup'
+import { SkillChoiceNotice } from './SkillChoiceNotice'
 
 export const KIND_LABEL: Record<string, string> = {
   class: 'Class', subclass: 'Subclass', species: 'Species', background: 'Background', feat: 'Feat', spell: 'Spell',
@@ -234,7 +235,7 @@ export function InfoPopover({
         <motion.div
           ref={boxRef}
           className="panel fixed z-[80] overflow-hidden"
-          style={{ left, top, bottom, width: W }}
+          style={{ left, top, bottom, width: W, maxHeight: anchor ? (below ? window.innerHeight - anchor.bottom - 20 : anchor.top - 20) : undefined, overflowY: 'auto' }}
           initial={{ opacity: 0, y: below ? -6 : 6, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.97 }}
@@ -259,6 +260,7 @@ export function InfoPopover({
                 ))}
               </dl>
             )}
+            <SkillChoiceNotice entity={entity} />
             <p className="font-serif text-[15px] leading-snug">{entity.summary}</p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
@@ -358,6 +360,7 @@ export function DetailDrawer() {
               <p className="mt-1 font-serif text-[16px] italic text-muted">{e.summary}</p>
             </header>
             <div className="flex-1 overflow-y-auto px-6 py-5">
+              <SkillChoiceNotice entity={e} className="mb-5" />
               <AddToCharacter entity={e} />
               <EntityBody entity={e} />
               {(e.source === 'Third-party' || e.source === 'Supplement') && (

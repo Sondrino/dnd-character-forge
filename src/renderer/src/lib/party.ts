@@ -81,15 +81,7 @@ export function removeCombatant(e: PartyEncounter, pred: (x: Combatant) => boole
   e.turnIdx = Math.max(0, Math.min(idx >= 0 ? idx : e.turnIdx, e.combatants.length - 1))
 }
 
-/** Endre initiativ på en deltaker uten å endre hvem sin tur det er */
-export function setInitiative(e: PartyEncounter, uid: string, init: number): void {
-  const curUid = initiativeOrder(e.combatants)[e.turnIdx]?.uid
-  const x = e.combatants.find((y) => y.uid === uid)
-  if (!x) return
-  x.init = init
-  const idx = initiativeOrder(e.combatants).findIndex((y) => y.uid === curUid)
-  if (idx >= 0) e.turnIdx = idx
-}
+export { setInitiative } from './combat'
 
 /* ------------------------------------------------------------------ */
 /* HP på ekte karakterer (samme regler som arket og kampmodus)          */

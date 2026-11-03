@@ -71,6 +71,8 @@ export function SpellsTab() {
             <div className="mt-3 space-y-1 text-[13px]">
               <Counter label={t('spells.cantrips')} n={sc.cantripCount} max={sc.cantripsMax} />
               <Counter label={t('spells.prepared')} n={sc.preparedCount} max={sc.preparedMax} />
+              {sc.alwaysPreparedCount > 0 && <div className="text-xs text-muted">{t('tools.spellInfo.always', { n: sc.alwaysPreparedCount })}</div>}
+              {sc.preparedMax > 0 && <div className="text-xs text-muted">{t('tools.spellInfo.vsSlots')}</div>}
               <div className="text-xs text-muted">{t('spells.maxLevel', { n: sc.maxSpellLevel })}</div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -266,18 +268,20 @@ export function SpellsTab() {
             const sc = d.spellcasting.find((x) => x.classId === picker.classId)
             return sc ? (picker.cantrip ? sc.cantripsMax : sc.preparedMax) || undefined : undefined
           })()}
-          selected={char.spells.filter((s) => s.source === picker.classId).map((s) => s.spellId).filter((id) => {
+          selected={char.spells.filter((s) => s.source === picker.classId && !s.alwaysPrepared).map((s) => s.spellId).filter((id) => {
             const lv = (L.get('spell', id) as SpellDef | undefined)?.level ?? 0
             return picker.cantrip ? lv === 0 : lv > 0
           })}
           filter={(e) => {
             const sc = d.spellcasting.find((c) => c.classId === picker.classId)
+            // Spells du alltid har prepared teller ikke mot maks og skal ikke velges på nytt
+            if (char.spells.some((s) => s.source === picker.classId && s.alwaysPrepared && s.spellId === e.id)) return false
             return spellFilter(sc?.spellList, { cantrip: picker.cantrip ? true : false, maxLevel: picker.cantrip ? 0 : sc?.maxSpellLevel })(e as SpellDef)
           }}
           onConfirm={(ids) =>
             update((c) => {
               const isC = (id: string): boolean => ((L.get('spell', id) as SpellDef | undefined)?.level ?? 0) === 0
-              c.spells = c.spells.filter((s) => s.source !== picker.classId || isC(s.spellId) !== picker.cantrip || ids.includes(s.spellId))
+              c.spells = c.spells.filter((s) => s.source !== picker.classId || s.alwaysPrepared || isC(s.spellId) !== picker.cantrip || ids.includes(s.spellId))
               for (const id of ids) if (!c.spells.some((s) => s.source === picker.classId && s.spellId === id)) c.spells.push({ spellId: id, source: picker.classId, prepared: true })
             })
           }

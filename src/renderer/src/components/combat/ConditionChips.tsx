@@ -5,6 +5,22 @@ import { useTranslation } from 'react-i18next'
 import { Plus, X } from 'lucide-react'
 import { useLookup } from '../../store/ui'
 
+/** Alle conditions som av/på-knapper */
+export function ConditionGrid({ value, onToggle }: { value: string[]; onToggle: (id: string) => void }) {
+  const L = useLookup()
+  return (
+    <div className="flex flex-wrap gap-1">
+      {L.all('condition')
+        .filter((x) => x.id !== 'exhaustion')
+        .map((x) => (
+          <button key={x.id} title={x.summary} className={`chip cursor-pointer text-[11px] ${value.includes(x.id) ? 'border-crimson bg-crimson/20 text-crimson-2' : ''}`} onClick={() => onToggle(x.id)}>
+            {x.name}
+          </button>
+        ))}
+    </div>
+  )
+}
+
 /**
  * Conditions som chips (klikk for å fjerne) + en «+»-knapp som åpner en popover med alle conditions.
  * Brukes per deltaker i initiativlista og på kortene i gruppemodus.
@@ -12,7 +28,6 @@ import { useLookup } from '../../store/ui'
 export function ConditionChips({ value, onToggle, className }: { value: string[]; onToggle: (id: string) => void; className?: string }) {
   const { t } = useTranslation()
   const L = useLookup()
-  const conds = L.all('condition').filter((x) => x.id !== 'exhaustion')
   const name = (id: string): string => L.get('condition', id)?.name ?? id
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
   const btn = useRef<HTMLButtonElement>(null)
@@ -79,21 +94,7 @@ export function ConditionChips({ value, onToggle, className }: { value: string[]
               style={{ left: pos.x, top: pos.y }}
             >
               <div className="panel-title mb-1.5">{t('party.conditions')}</div>
-              <div className="flex flex-wrap gap-1">
-                {conds.map((x) => {
-                  const on = value.includes(x.id)
-                  return (
-                    <button
-                      key={x.id}
-                      title={x.summary}
-                      className={`chip cursor-pointer text-[11px] ${on ? 'border-crimson bg-crimson/20 text-crimson-2' : ''}`}
-                      onClick={() => onToggle(x.id)}
-                    >
-                      {x.name}
-                    </button>
-                  )
-                })}
-              </div>
+              <ConditionGrid value={value} onToggle={onToggle} />
             </motion.div>
           )}
         </AnimatePresence>,

@@ -248,8 +248,9 @@ function ClassSpellStep({ p }: { p: PendingChoice }) {
         kinds={['spell']}
         title={cantrip ? t('spells.addCantrip') : t('spells.addSpell')}
         multi
+        max={p.count}
         selected={current}
-        filter={(e) => spellFilter(sc?.spellList, { cantrip: cantrip ? true : false, maxLevel: cantrip ? 0 : sc?.maxSpellLevel })(e as SpellDef)}
+        filter={(e) => !char.spells.some((s) => s.source === classId && s.alwaysPrepared && s.spellId === e.id) && spellFilter(sc?.spellList, { cantrip: cantrip ? true : false, maxLevel: cantrip ? 0 : sc?.maxSpellLevel })(e as SpellDef)}
         onConfirm={(ids) =>
           update((c) => {
             c.spells = c.spells.filter((s) => s.source !== classId || s.alwaysPrepared || isC(s.spellId) !== cantrip || ids.includes(s.spellId))

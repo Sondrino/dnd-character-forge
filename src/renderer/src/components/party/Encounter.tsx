@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { BookOpen, Brain, ChevronDown, Copy, Dices, Flag, Plus, Skull, Swords, Trash2, UserPlus } from 'lucide-react'
@@ -11,10 +11,11 @@ import { useParties, type Party, type PartyEncounter } from '../../store/party'
 import { computeCharacter } from '../../engine/compute'
 import { addLog, advanceTurn, initiativeOrder, uidc } from '../../lib/combat'
 import { applyCombatantHp, creatureCombatant, creatureInitMod, hpDice, toggleCombatantCondition } from '../../lib/monsters'
-import { addCombatants, applyHpChange, liveMembers, memberCombatant, newEncounter, removeCombatant, setInitiative, toggleCharacterCondition, type HpOutcome } from '../../lib/party'
+import { addCombatants, applyHpChange, liveMembers, memberCombatant, newEncounter, removeCombatant, toggleCharacterCondition, type HpOutcome } from '../../lib/party'
 import { Modal, NumberInput, Section } from '../ui'
 import { EntityPicker } from '../EntityPicker'
 import { ConditionChips } from '../combat/ConditionChips'
+import { CombatantEditor, InitInput, TurnRow } from '../combat/TurnRow'
 import { signed } from '../combat/useCombat'
 
 type MutE = (recipe: (e: PartyEncounter) => void) => void
@@ -228,9 +229,9 @@ function Tracker({ party, e, mutE }: { party: Party; e: PartyEncounter; mutE: Mu
           <div className="space-y-1.5">
             {order.map((x, i) =>
               x.characterId ? (
-                <MemberRow key={x.uid} x={x} isCur={i === e.turnIdx} mutE={mutE} />
+                <MemberRow key={x.uid} x={x} index={i} total={order.length} isCur={i === e.turnIdx} mutE={mutE} />
               ) : (
-                <MonsterRow key={x.uid} x={x} isCur={i === e.turnIdx} mutE={mutE} />
+                <MonsterRow key={x.uid} x={x} index={i} total={order.length} isCur={i === e.turnIdx} mutE={mutE} />
               )
             )}
             {order.length === 0 && <p className="text-sm text-muted">{t('party.emptyTracker')}</p>}
@@ -319,18 +320,6 @@ function Tracker({ party, e, mutE }: { party: Party; e: PartyEncounter; mutE: Mu
   )
 }
 
-/** Initiativ-feltet: endrer verdien uten å flytte hvem sin tur det er */
-function InitInput({ x, mutE }: { x: Combatant; mutE: MutE }) {
-  const [v, setV] = useState(String(x.init))
-  useEffect(() => setV(String(x.init)), [x.init])
-  const commit = (): void => {
-    const n = parseInt(v, 10)
-    if (Number.isFinite(n) && n !== x.init) mutE((ee) => setInitiative(ee, x.uid, n))
-    else setV(String(x.init))
-  }
-  return <input className="input w-12 px-1 text-center font-display" value={v} onChange={(ev) => setV(ev.target.value)} onBlur={commit} onKeyDown={(ev) => ev.key === 'Enter' && commit()} />
-}
-
 /** ±HP-felt: positivt tall = skade, negativt = helbredelse */
 function QuickHp({ onApply }: { onApply: (v: number) => void }) {
   const { t } = useTranslation()
@@ -369,21 +358,8 @@ function HpBar({ hp, max, temp }: { hp: number; max?: number; temp?: number }) {
   )
 }
 
-function RowShell({ x, isCur, children }: { x: Combatant; isCur: boolean; children: React.ReactNode }) {
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: x.defeated ? 0.45 : 1, x: 0 }}
-      className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border px-2 py-1.5 text-sm ${isCur ? 'border-gold bg-gold/10' : 'border-line-soft'}`}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
 /** Gruppemedlem: HP, conditions og concentration leses og skrives på den ekte karakteren */
-function MemberRow({ x, isCur, mutE }: { x: Combatant; isCur: boolean; mutE: MutE }) {
+function MemberRow({ x, index, total, isCur, mutE }: { x: Combatant; index: number; total: number; isCur: boolean; mutE: MutE }) {
   const { t } = useTranslation()
   const nav = useNavigate()
   const notify = useUi((s) => s.notify)
@@ -391,12 +367,12 @@ function MemberRow({ x, isCur, mutE }: { x: Combatant; isCur: boolean; mutE: Mut
   const { char, derived: d, update } = useCharacter(x.characterId)
   if (!char || !d) {
     return (
-      <RowShell x={x} isCur={isCur}>
+      <TurnRow x={x} isCur={isCur} mutT={mutE}>
         <span className="flex-1 text-muted">{x.name} · {t('party.missingChar')}</span>
         <button className="btn btn-ghost btn-sm px-1" onClick={() => mutE((ee) => removeCombatant(ee, (y) => y.uid === x.uid))}>
           <Trash2 size={12} />
         </button>
-      </RowShell>
+      </TurnRow>
     )
   }
   const max = d.hpMax.value
@@ -422,9 +398,22 @@ function MemberRow({ x, isCur, mutE }: { x: Combatant; isCur: boolean; mutE: Mut
     })
     if (out.damage?.concentrationDC) notify(t('party.concSave', { name, spell: conc?.name ?? '', dc: out.damage.concentrationDC }))
   }
+  const toggleCondition = (cid: string): void => {
+    const res: { on?: boolean; lost?: string } = {}
+    update((ch) => {
+      const r = toggleCharacterCondition(ch, cid)
+      res.on = r.on
+      res.lost = r.concentrationLost
+    })
+    const name = char.name || t('common.unnamed')
+    mutE((ee) => {
+      addLog(ee, 'info', `${name}: ${res.on ? '+' : '−'} ${L.get('condition', cid)?.name ?? cid}`)
+      if (res.lost) addLog(ee, 'info', t('party.concLost', { name, spell: res.lost }))
+    })
+  }
   return (
-    <RowShell x={x} isCur={isCur}>
-      <InitInput x={x} mutE={mutE} />
+    <TurnRow x={x} isCur={isCur} mutT={mutE} editor={<CombatantEditor x={x} index={index} total={total} mutT={mutE} editable={false} conditions={char.conditions} onToggleCondition={toggleCondition} />}>
+      <InitInput x={x} mutT={mutE} />
       <span className="flex min-w-0 flex-1 items-center gap-1 truncate">
         {isCur && '▶ '}
         <button className="truncate font-semibold text-gold hover:text-gold-2" title={t('party.openSheet')} onClick={() => nav(`/character/${char.id}`)}>
@@ -450,29 +439,13 @@ function MemberRow({ x, isCur, mutE }: { x: Combatant; isCur: boolean; mutE: Mut
           <Trash2 size={12} />
         </button>
       </span>
-      <ConditionChips
-        className="w-full pl-14"
-        value={char.conditions}
-        onToggle={(cid) => {
-          const res: { on?: boolean; lost?: string } = {}
-          update((ch) => {
-            const r = toggleCharacterCondition(ch, cid)
-            res.on = r.on
-            res.lost = r.concentrationLost
-          })
-          const name = char.name || t('common.unnamed')
-          mutE((ee) => {
-            addLog(ee, 'info', `${name}: ${res.on ? '+' : '−'} ${L.get('condition', cid)?.name ?? cid}`)
-            if (res.lost) addLog(ee, 'info', t('party.concLost', { name, spell: res.lost }))
-          })
-        }}
-      />
-    </RowShell>
+      <ConditionChips className="w-full pl-20" value={char.conditions} onToggle={toggleCondition} />
+    </TurnRow>
   )
 }
 
 /** Monster eller NPC: HP lagres på deltakeren */
-function MonsterRow({ x, isCur, mutE }: { x: Combatant; isCur: boolean; mutE: MutE }) {
+function MonsterRow({ x, index, total, isCur, mutE }: { x: Combatant; index: number; total: number; isCur: boolean; mutE: MutE }) {
   const { t } = useTranslation()
   const L = useLookup()
   const roll = useRolls((s) => s.roll)
@@ -484,9 +457,14 @@ function MonsterRow({ x, isCur, mutE }: { x: Combatant; isCur: boolean; mutE: Mu
       const y = ee.combatants.find((z) => z.uid === x.uid)
       if (y) recipe(y, ee)
     })
+  const toggleCondition = (cid: string): void =>
+    mutX((y, ee) => {
+      const on = toggleCombatantCondition(y, cid)
+      addLog(ee, 'info', `${y.name}: ${on ? '+' : '−'} ${L.get('condition', cid)?.name ?? cid}`)
+    })
   return (
-    <RowShell x={x} isCur={isCur}>
-      <InitInput x={x} mutE={mutE} />
+    <TurnRow x={x} isCur={isCur} mutT={mutE} editor={<CombatantEditor x={x} index={index} total={total} mutT={mutE} editable conditions={x.conditions ?? []} onToggleCondition={toggleCondition} />}>
+      <InitInput x={x} mutT={mutE} />
       <span className={`flex min-w-0 flex-1 items-center gap-1 truncate ${x.ally ? 'text-good' : ''}`}>
         {isCur && '▶ '}
         {cr ? (
@@ -547,17 +525,8 @@ function MonsterRow({ x, isCur, mutE }: { x: Combatant; isCur: boolean; mutE: Mu
         <Trash2 size={12} />
       </button>
       </span>
-      <ConditionChips
-        className="w-full pl-14"
-        value={x.conditions ?? []}
-        onToggle={(cid) =>
-          mutX((y, ee) => {
-            const on = toggleCombatantCondition(y, cid)
-            addLog(ee, 'info', `${y.name}: ${on ? '+' : '−'} ${L.get('condition', cid)?.name ?? cid}`)
-          })
-        }
-      />
-    </RowShell>
+      <ConditionChips className="w-full pl-20" value={x.conditions ?? []} onToggle={toggleCondition} />
+    </TurnRow>
   )
 }
 

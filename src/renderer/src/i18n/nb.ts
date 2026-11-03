@@ -170,7 +170,7 @@ export const nb = {
       creature: 'Monster, companion eller familiar med stat block – kan legges til i kampmodus.',
       language: 'Eget språk for verdenen din.'
     },
-    useHint: { subclass: 'velg ved level up / i veiviseren', species: 'velg i veiviseren', background: 'velg i veiviseren', creature: 'brukes i kampmodus' }
+    useHint: { subclass: 'velg ved level up / i veiviseren', species: 'velg i veiviseren', background: 'velg i veiviseren', creature: 'legg til under Companions på arket, eller bruk i kampmodus' }
   },
   settings: { showSupplements: 'Vis innhold fra tilleggsbøker (Xanathar’s, Tasha’s …)', showThirdParty: 'Vis tredjepartsinnhold (Kobold Press, Level Up A5E …)', sourcesHint: 'Skjulte kilder forsvinner fra lister og velgere. Karakterer som allerede bruker dem, påvirkes ikke.',
     appearance: 'Utseende', language: 'Språk', theme: 'Tema', dark: 'Mørkt', light: 'Lyst', animations: 'Animasjoner', diceSound: 'Terninglyd',
@@ -210,7 +210,7 @@ export const nb = {
       spell: 'Velg {{n}} spell(s) fra listen.',
       cantrip: 'Velg {{n}} cantrip(s) – spells du kan kaste ubegrenset.',
       cantrips: 'Velg {{n}} cantrip(s) til. Cantrips kan kastes så ofte du vil uten spell slots.',
-      prepared: 'Du kan forberede {{n}} spell(s) til. Prepared spells er de du kan kaste med spell slots i dag.',
+      prepared: 'Du kan forberede {{n}} spell(s) til. Prepared spells er listen du kan velge fra i dag, og spell slots er hvor mange ganger du kan kaste dem. Derfor kan du ha flere prepared spells enn slots.',
       bgAbilities: 'Background-en din gir +2 og +1 (eller +1/+1/+1) til tre ability scores. Fordel poengene – legg gjerne +2 på primary ability.',
       bgFeat: 'Background-en gir et origin feat. Klikk for å legge det til.',
       languages: 'Alle kan Common. I tillegg velger du to språk ved opprettelse.',

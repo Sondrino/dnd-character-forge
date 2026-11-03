@@ -494,6 +494,8 @@ export interface Combatant {
   uid: string
   name: string
   init: number
+  /** Manuell rekkefølge blant deltakere med likt initiativ (lavest først) */
+  tie?: number
   /** Karakteren selv */
   self?: boolean
   ally?: boolean

@@ -167,7 +167,7 @@ export const en: typeof nb = {
       creature: 'Monster, companion or familiar with a stat block – can be added in combat mode.',
       language: 'A language for your world.'
     },
-    useHint: { subclass: 'pick at level up / in the builder', species: 'pick in the builder', background: 'pick in the builder', creature: 'used in combat mode' }
+    useHint: { subclass: 'pick at level up / in the builder', species: 'pick in the builder', background: 'pick in the builder', creature: 'add under Companions on the sheet, or use in combat mode' }
   },
   settings: { showSupplements: 'Show supplement content (Xanathar’s, Tasha’s …)', showThirdParty: 'Show third-party content (Kobold Press, Level Up A5E …)', sourcesHint: 'Hidden sources disappear from lists and pickers. Characters already using them are not affected.',
     appearance: 'Appearance', language: 'Language', theme: 'Theme', dark: 'Dark', light: 'Light', animations: 'Animations', diceSound: 'Dice sound',
@@ -207,7 +207,7 @@ export const en: typeof nb = {
       spell: 'Choose {{n}} spell(s) from the list.',
       cantrip: 'Choose {{n}} cantrip(s) – spells you can cast at will.',
       cantrips: 'Choose {{n}} more cantrip(s). Cantrips can be cast as often as you like without spell slots.',
-      prepared: 'You can prepare {{n}} more spell(s). Prepared spells are the ones you can cast with spell slots today.',
+      prepared: 'You can prepare {{n}} more spell(s). Prepared spells are the list you can pick from today, and spell slots are how many times you can cast them. That’s why you can have more prepared spells than slots.',
       bgAbilities: 'Your background gives +2 and +1 (or +1/+1/+1) to three ability scores. Distribute them – ideally +2 to your primary ability.',
       bgFeat: 'Your background grants an origin feat. Click to add it.',
       languages: 'Everyone knows Common. In addition you choose two languages at creation.',

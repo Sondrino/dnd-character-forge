@@ -25,9 +25,79 @@ export function newCombat(dice: CombatState['dice'], self: Combatant): CombatSta
   }
 }
 
-/** Initiativ-rekkefølge: høyest først; ved likt vinner karakteren selv, så navn */
+/** Initiativ-rekkefølge: høyest først; ved likt gjelder manuell rekkefølge, så karakteren selv, så navn */
 export function initiativeOrder(cs: Combatant[]): Combatant[] {
-  return [...cs].sort((a, b) => b.init - a.init || Number(!!b.self) - Number(!!a.self) || a.name.localeCompare(b.name))
+  const tie = (x: Combatant): number => x.tie ?? Number.MAX_SAFE_INTEGER
+  return [...cs].sort((a, b) => b.init - a.init || tie(a) - tie(b) || Number(!!b.self) - Number(!!a.self) || a.name.localeCompare(b.name))
+}
+
+/** Kamp og gruppekamp har samme form for initiativlista */
+export type TurnState = Pick<CombatState, 'combatants' | 'turnIdx'>
+
+/** Kjør en endring av initiativlista uten å endre hvem sin tur det er */
+function keepingTurn(e: TurnState, change: () => void): void {
+  const curUid = initiativeOrder(e.combatants)[e.turnIdx]?.uid
+  change()
+  const idx = initiativeOrder(e.combatants).findIndex((x) => x.uid === curUid)
+  if (idx >= 0) e.turnIdx = idx
+}
+
+/** Endre initiativ på en deltaker uten å endre hvem sin tur det er */
+export function setInitiative(e: TurnState, uid: string, init: number): void {
+  const x = e.combatants.find((y) => y.uid === uid)
+  if (!x) return
+  keepingTurn(e, () => {
+    x.init = init
+    x.tie = undefined
+  })
+}
+
+/**
+ * Flytt en deltaker rett før/etter en annen. Den flyttede får samme initiativ som den andre, så tallene
+ * alltid står i synkende rekkefølge. Rekkefølgen blant like tall huskes i `tie`.
+ */
+export function moveCombatant(e: TurnState, uid: string, targetUid: string, place: 'before' | 'after'): void {
+  if (uid === targetUid) return
+  const x = e.combatants.find((y) => y.uid === uid)
+  const target = e.combatants.find((y) => y.uid === targetUid)
+  if (!x || !target) return
+  keepingTurn(e, () => {
+    const list = initiativeOrder(e.combatants).filter((y) => y.uid !== uid)
+    x.init = target.init
+    list.splice(list.findIndex((y) => y.uid === targetUid) + (place === 'after' ? 1 : 0), 0, x)
+    list.filter((y) => y.init === x.init).forEach((y, i) => (y.tie = i))
+  })
+}
+
+/** Flytt ett steg opp/ned eller helt øverst/nederst */
+export function shiftCombatant(e: TurnState, uid: string, to: 'up' | 'down' | 'top' | 'bottom'): void {
+  const order = initiativeOrder(e.combatants)
+  const i = order.findIndex((y) => y.uid === uid)
+  if (i < 0) return
+  const target = to === 'up' ? order[i - 1] : to === 'down' ? order[i + 1] : to === 'top' ? order[0] : order[order.length - 1]
+  if (target) moveCombatant(e, uid, target.uid, to === 'up' || to === 'top' ? 'before' : 'after')
+}
+
+/** Felter som kan redigeres direkte i initiativlista */
+export interface CombatantPatch {
+  name?: string
+  ac?: number | null
+  hp?: number | null
+  maxHp?: number | null
+  ally?: boolean
+}
+
+/** Rediger en deltaker. null tømmer et tallfelt; et tomt navn ignoreres. */
+export function editCombatant(x: Combatant, patch: CombatantPatch): void {
+  const name = patch.name?.trim()
+  if (name) x.name = name
+  if (patch.ally !== undefined) x.ally = patch.ally
+  if (patch.ac !== undefined) x.ac = patch.ac ?? undefined
+  if (patch.maxHp !== undefined) x.maxHp = patch.maxHp === null ? undefined : Math.max(1, patch.maxHp)
+  if (patch.hp !== undefined) x.hp = patch.hp === null ? undefined : Math.max(0, patch.hp)
+  if (x.hp !== undefined && x.maxHp !== undefined) x.hp = Math.min(x.hp, x.maxHp)
+  // Tydelig HP-endring: 0 HP betyr beseiret, HP over 0 tar deltakeren tilbake i kampen
+  if (patch.hp !== undefined && x.hp !== undefined) x.defeated = x.hp === 0 && !!x.maxHp
 }
 
 /**

@@ -7,6 +7,12 @@ export const COMPANION_KINDS: Companion['kind'][] = ['familiar', 'companion', 's
 
 const uidc = (): string => Math.random().toString(36).slice(2, 10)
 
+/** Gjett type ut fra classen: Find Familiar (druid/wizard/warlock), Find Steed (paladin), ellers dyrevenn */
+export function defaultCompanionKind(ch: Pick<Character, 'classes'>): Companion['kind'] {
+  const has = (...ids: string[]): boolean => ch.classes.some((x) => ids.includes(x.classId))
+  return has('druid', 'wizard', 'warlock') ? 'familiar' : has('paladin') ? 'steed' : 'companion'
+}
+
 export function companionFromCreature(cr: CreatureDef, kind: Companion['kind'] = 'companion'): Companion {
   const hp = creatureHp(cr.hp) ?? 1
   return { uid: uidc(), creatureId: cr.id, name: cr.name, hp, maxHp: hp, temp: 0, ac: cr.ac, kind }
@@ -49,13 +55,17 @@ export function companionCombatants(ch: Character, rollInit: (cp: Companion) => 
     }))
 }
 
-/** Skriv HP fra koblede combatants tilbake til companions (kalles etter hver endring i kampmodus) */
+/** Skriv navn, AC og HP fra koblede combatants tilbake til companions (kalles etter hver endring i kampmodus) */
 export function syncCompanionsFromCombat(ch: Character): void {
   if (!ch.combat || !ch.companions?.length) return
   for (const x of ch.combat.combatants) {
-    if (!x.companionUid || x.hp === undefined) continue
+    if (!x.companionUid) continue
     const cp = ch.companions.find((c) => c.uid === x.companionUid)
-    if (cp && cp.hp !== x.hp) cp.hp = Math.max(0, Math.min(cp.maxHp, x.hp))
+    if (!cp) continue
+    if (x.name.trim()) cp.name = x.name
+    cp.ac = x.ac
+    if (x.maxHp) cp.maxHp = x.maxHp
+    if (x.hp !== undefined) cp.hp = Math.max(0, Math.min(cp.maxHp, x.hp))
   }
 }
 
@@ -65,6 +75,7 @@ export function syncCombatFromCompanion(ch: Character, uid: string): void {
   if (!cp || !ch.combat) return
   for (const x of ch.combat.combatants) {
     if (x.companionUid !== uid) continue
+    x.name = cp.name
     x.hp = cp.hp
     x.maxHp = cp.maxHp
     x.ac = cp.ac

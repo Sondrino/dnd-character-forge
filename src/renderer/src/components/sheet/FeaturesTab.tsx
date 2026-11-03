@@ -12,6 +12,7 @@ import type { DerivedFeature } from '../../engine/compute'
 import type { Uses } from '../../types'
 import { openDndBeyond } from '../EntityInfo'
 import { removeWithUndo } from '../../store/ui'
+import { SkillChoiceNotice } from '../SkillChoiceNotice'
 
 export function FeaturesTab() {
   const { t } = useTranslation()
@@ -108,6 +109,7 @@ function FeatureCard({ f }: { f: DerivedFeature }) {
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="border-t border-line-soft px-4 py-3">
+              <SkillChoiceNotice entity={{ ...f, kind: 'feature' }} className="mb-2" />
               <Markdown text={f.description || f.summary} compact />
               <div className="mt-2 flex gap-2">
                 <button className="btn btn-ghost btn-sm" onClick={() => openDndBeyond({ name: f.name })}>

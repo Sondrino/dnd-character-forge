@@ -20,6 +20,7 @@ import { creatureCombatant, creatureInitMod, hpDice, toggleCombatantCondition } 
 import { toggleCharacterCondition } from '../../lib/party'
 import { useHotkeyListener } from '../../lib/hotkeys'
 import { AddCompanionsButton } from './CompanionsButton'
+import { CombatantEditor, InitInput, TurnRow, type MutTurn } from './TurnRow'
 
 const DAMAGE_TYPES: DamageType[] = ['acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder']
 const ABIL: Record<Ability, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' }
@@ -459,6 +460,7 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
   const [dmgFor, setDmgFor] = useState<Record<string, string>>({})
   const [bestiary, setBestiary] = useState(false)
   useHotkeyListener('next', () => onNext())
+  const mutT: MutTurn = (recipe) => mut((cc) => recipe(cc))
 
   /** Legg til skapninger fra bestiariet (SRD-monstre og egne) med AC, HP og rullet initiativ */
   const addCreatures = (list: CreatureDef[]): void =>
@@ -553,26 +555,33 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
       <div className="space-y-1">
         {order.map((x, i) => {
           const isCur = i === c.turnIdx
+          const toggleCondition = (id: string): void =>
+            mut((cc, ch) => {
+              if (x.self) {
+                const r = toggleCharacterCondition(ch, id)
+                addLog(cc, 'info', `${r.on ? '+' : '−'} ${L.get('condition', id)?.name ?? id}`)
+                if (r.concentrationLost) addLog(cc, 'info', t('combat.log.concLost', { name: r.concentrationLost }))
+              } else {
+                const y = cc.combatants.find((z) => z.uid === x.uid)!
+                const on = toggleCombatantCondition(y, id)
+                addLog(cc, 'info', `${y.name}: ${on ? '+' : '−'} ${L.get('condition', id)?.name ?? id}`)
+              }
+            })
           return (
-            <motion.div
-              layout
+            <TurnRow
               key={x.uid}
-              className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border px-2 py-1.5 text-sm ${isCur ? 'border-gold bg-gold/10' : 'border-line-soft'} ${x.defeated ? 'opacity-40' : ''}`}
+              x={x}
+              isCur={isCur}
+              mutT={mutT}
+              editor={<CombatantEditor x={x} index={i} total={order.length} mutT={mutT} editable={!x.self} conditions={x.self ? char.conditions : (x.conditions ?? [])} onToggleCondition={toggleCondition} />}
             >
-              <input
-                className="input w-12 px-1 text-center font-display"
-                value={x.init}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10)
-                  if (Number.isFinite(v)) mut((cc) => void (cc.combatants.find((y) => y.uid === x.uid)!.init = v))
-                }}
-              />
+              <InitInput x={x} mutT={mutT} />
               <span className={`min-w-0 flex-1 truncate ${x.self ? 'font-semibold text-gold' : x.ally ? 'text-good' : ''}`}>
                 {isCur && '▶ '}
                 {x.self ? (
                   char.name || t('combat.you')
                 ) : x.creatureId ? (
-                  <button className="entity-link" title={t('party.statBlock')} onClick={() => openDetail({ kind: 'creature', id: x.creatureId! })}>
+                  <button className="entity-link" title={t('party.statBlock')} onClick={() => openDetail({ kind: 'creature', id: x.creatureId!, entity: L.get('creature', x.creatureId!) })}>
                     {x.name}
                   </button>
                 ) : (
@@ -585,17 +594,7 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
                   <span className="text-xs text-muted">
                     {char.hp.current}/{d.hpMax.value} HP
                   </span>
-                  <ConditionChips
-                    className="w-full"
-                    value={char.conditions}
-                    onToggle={(id) =>
-                      mut((cc, ch) => {
-                        const r = toggleCharacterCondition(ch, id)
-                        addLog(cc, 'info', `${r.on ? '+' : '−'} ${L.get('condition', id)?.name ?? id}`)
-                        if (r.concentrationLost) addLog(cc, 'info', t('combat.log.concLost', { name: r.concentrationLost }))
-                      })
-                    }
-                  />
+                  <ConditionChips className="w-full" value={char.conditions} onToggle={toggleCondition} />
                 </>
               ) : (
                 <>
@@ -606,17 +605,7 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
                     </span>
                   )}
                   <div className="flex w-full items-center justify-end gap-1">
-                  <ConditionChips
-                    className="mr-auto"
-                    value={x.conditions ?? []}
-                    onToggle={(id) =>
-                      mut((cc) => {
-                        const y = cc.combatants.find((z) => z.uid === x.uid)!
-                        const on = toggleCombatantCondition(y, id)
-                        addLog(cc, 'info', `${y.name}: ${on ? '+' : '−'} ${L.get('condition', id)?.name ?? id}`)
-                      })
-                    }
-                  />
+                  <ConditionChips className="mr-auto" value={x.conditions ?? []} onToggle={toggleCondition} />
                   {x.creatureId && hpDice((L.get('creature', x.creatureId) as CreatureDef | undefined)?.hp) && (
                     <button
                       className="btn btn-ghost btn-sm px-1"
@@ -664,7 +653,7 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
                     onClick={() =>
                       mut((cc) => {
                         const n = cc.combatants.filter((y) => y.name.replace(/ \d+$/, '') === x.name.replace(/ \d+$/, '')).length + 1
-                        cc.combatants.push({ ...x, uid: uidc(), name: `${x.name.replace(/ \d+$/, '')} ${n}`, hp: x.maxHp ?? x.hp, defeated: false })
+                        cc.combatants.push({ ...x, uid: uidc(), name: `${x.name.replace(/ \d+$/, '')} ${n}`, hp: x.maxHp ?? x.hp, defeated: false, companionUid: undefined })
                       })
                     }
                   >
@@ -689,7 +678,7 @@ export function InitiativePanel({ onNext }: { onNext: () => void }) {
                   </div>
                 </>
               )}
-            </motion.div>
+            </TurnRow>
           )
         })}
       </div>

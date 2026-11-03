@@ -13,6 +13,7 @@ export const toolsNb = {
   },
   companions: {
     title: 'Companions', add: 'Fra bestiariet', addCustom: 'Egen', pickTitle: 'Legg til companion fra bestiariet',
+    homebrew: 'Homebrew', homebrewAdd: 'Legg {{name}} til som companion', homebrewEmpty: 'Du har ingen homebrew-skapninger ennå.', homebrewNew: 'Lag homebrew-companion',
     empty: 'Ingen companions – legg til en familiar, dyrevenn, steed eller summon.', name: 'Navn', maxHp: 'Maks HP', ac: 'AC', kind: 'Type',
     kinds: { familiar: 'Familiar', companion: 'Dyrevenn', steed: 'Steed', summon: 'Summon', other: 'Annet' },
     damage: 'Skade', heal: 'Heal', temp: 'Temp', notes: 'Notater', remove: 'Fjern', statBlock: 'Vis stat block', down: 'Nede',
@@ -45,6 +46,17 @@ export const toolsNb = {
   macros: {
     title: 'Makroer', add: 'Ny makro', label: 'Navn', notation: '2d6+3', save: 'Lagre makro', remove: 'Slett makro', none: 'Ingen makroer – lagre kast du bruker ofte.',
     badLabel: 'Gi makroen et navn (maks 40 tegn)', badNotation: 'Ugyldig terningnotasjon'
+  },
+  initEdit: {
+    rowTip: 'Klikk for å flytte, gi conditions eller redigere', dragTip: 'Dra for å flytte i rekkefølgen', move: 'Flytt:', top: 'Øverst', bottom: 'Nederst', up: 'Ett steg opp', down: 'Ett steg ned',
+    linked: 'Navn, HP og AC hentes fra karakterarket.'
+  },
+  skillNotice: {
+    title: 'Du har ikke valgt skill proficiencies ennå', progress: '{{label}}: {{chosen}} av {{count}} valgt', choose: 'Velg nå'
+  },
+  spellInfo: {
+    always: '+ {{n}} alltid prepared (teller ikke mot maks)',
+    vsSlots: 'Prepared spells er listen du kan velge fra. Spell slots er hvor mange ganger du kan kaste dem, så tallene trenger ikke være like.'
   }
 }
 
@@ -61,6 +73,7 @@ export const toolsEn: typeof toolsNb = {
   },
   companions: {
     title: 'Companions', add: 'From bestiary', addCustom: 'Custom', pickTitle: 'Add a companion from the bestiary',
+    homebrew: 'Homebrew', homebrewAdd: 'Add {{name}} as a companion', homebrewEmpty: 'You have no homebrew creatures yet.', homebrewNew: 'Create homebrew companion',
     empty: 'No companions – add a familiar, animal companion, steed or summon.', name: 'Name', maxHp: 'Max HP', ac: 'AC', kind: 'Type',
     kinds: { familiar: 'Familiar', companion: 'Companion', steed: 'Steed', summon: 'Summon', other: 'Other' },
     damage: 'Damage', heal: 'Heal', temp: 'Temp', notes: 'Notes', remove: 'Remove', statBlock: 'Show stat block', down: 'Down',
@@ -93,5 +106,16 @@ export const toolsEn: typeof toolsNb = {
   macros: {
     title: 'Macros', add: 'New macro', label: 'Name', notation: '2d6+3', save: 'Save macro', remove: 'Delete macro', none: 'No macros – save rolls you use often.',
     badLabel: 'Give the macro a name (max 40 characters)', badNotation: 'Invalid dice notation'
+  },
+  initEdit: {
+    rowTip: 'Click to move, add conditions or edit', dragTip: 'Drag to change the order', move: 'Move:', top: 'To top', bottom: 'To bottom', up: 'One step up', down: 'One step down',
+    linked: 'Name, HP and AC come from the character sheet.'
+  },
+  skillNotice: {
+    title: 'You haven’t chosen your skill proficiencies yet', progress: '{{label}}: {{chosen}} of {{count}} chosen', choose: 'Choose now'
+  },
+  spellInfo: {
+    always: '+ {{n}} always prepared (don’t count toward the max)',
+    vsSlots: 'Prepared spells are the list you can pick from. Spell slots are how many times you can cast them, so the numbers don’t have to match.'
   }
 }
